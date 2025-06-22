@@ -17,87 +17,157 @@ const execCommand = (cmd) => {
   }
 };
 
-// 🚀 Criando um novo projeto com Next.js e TypeScript
-console.log("📦 Criando novo projeto com Next.js...");
-execCommand(`npx --yes create-next-app@latest ${appName} --typescript --tailwind --eslint --app --src-dir --import-alias "@/*"`);
+// Função utilitária para perguntar no terminal
+function askQuestion(query) {
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout,
+  });
 
-process.chdir(appPath);
+  return new Promise((resolve) =>
+    rl.question(query, (ans) => {
+      rl.close();
+      resolve(ans);
+    })
+  );
+}
 
-// 🎯 Instalando dependências
-console.log("📦 Instalando Dependências de produção...");
-execCommand(
-  "npm install styled-components @types/styled-components react-redux @reduxjs/toolkit framer-motion react-icons immer redux@latest clsx class-variance-authority lucide-react --save"
-);
+async function main() {
+  console.log("🎨 RNT Next CLI - Criado por RNT");
+  console.log("=====================================");
 
-console.log("📦 Instalando Dependências de desenvolvimento...");
-execCommand(
-  "npm install @types/styled-components eslint-plugin-prettier prettier eslint-config-prettier --save-dev"
-);
+  // Pergunta sobre a escolha do CSS
+  const cssChoice = await askQuestion(
+    "Qual biblioteca de CSS você deseja usar?\n1. Styled Components\n2. Tailwind CSS\nEscolha (1 ou 2): "
+  );
 
-// 🏗 Criando estrutura de pastas
-console.log("📂 Criando estrutura de pastas...");
-const folders = [
-  "src/styles",
-  "src/components/ui",
-  "src/components/layout",
-  "src/components/layout/header",
-  "src/components/layout/footer",
-  "src/lib",
-  "src/hooks",
-  "src/utils",
-  "src/redux",
-  "src/redux/slices",
-  "src/types",
-  ".vscode",
-];
-folders.forEach((folder) =>
-  fs.mkdirSync(path.join(appPath, folder), { recursive: true })
-);
+  const useStyledComponents = cssChoice === "1";
+  const useTailwind = cssChoice === "2";
 
-// 📝 Criando arquivos de configuração...
-console.log("📄 Criando arquivos de configuração...");
+  if (!useStyledComponents && !useTailwind) {
+    console.log("❌ Escolha inválida. Usando Tailwind CSS por padrão.");
+  }
 
-// VSCode settings
-fs.writeFileSync(
-  ".vscode/settings.json",
-  JSON.stringify(
-    {
-      "editor.formatOnSave": true,
-      "editor.codeActionsOnSave": {
-        "source.fixAll.eslint": true,
-        "source.fixAll": true,
+  const finalChoice = useStyledComponents ? "styled-components" : "tailwind";
+
+  console.log(
+    `✅ Configurando projeto com ${
+      finalChoice === "styled-components" ? "Styled Components" : "Tailwind CSS"
+    }`
+  );
+
+  // 🚀 Criando um novo projeto com Next.js e TypeScript
+  console.log("📦 Criando novo projeto com Next.js...");
+
+  if (finalChoice === "styled-components") {
+    // Criar projeto sem Tailwind para Styled Components
+    execCommand(
+      `npx --yes create-next-app@latest ${appName} --typescript --no-tailwind --eslint --app --src-dir --import-alias "@/*" --turbo`
+    );
+  } else {
+    // Criar projeto com Tailwind
+    execCommand(
+      `npx --yes create-next-app@latest ${appName} --typescript --tailwind --eslint --app --src-dir --import-alias "@/*" --turbo`
+    );
+  }
+
+  // Verificar se o diretório foi criado antes de mudar para ele
+  if (!fs.existsSync(appPath)) {
+    console.error(`❌ Erro: Diretório ${appPath} não foi criado`);
+    process.exit(1);
+  }
+
+  process.chdir(appPath);
+
+  // 🎯 Instalando dependências baseadas na escolha
+  console.log("📦 Instalando Dependências de produção...");
+
+  if (finalChoice === "styled-components") {
+    execCommand(
+      "npm install styled-components @types/styled-components react-redux @reduxjs/toolkit framer-motion react-icons immer redux@latest clsx class-variance-authority lucide-react --save"
+    );
+  } else {
+    execCommand(
+      "npm install react-redux @reduxjs/toolkit framer-motion react-icons immer redux@latest clsx class-variance-authority lucide-react --save"
+    );
+  }
+
+  console.log("📦 Instalando Dependências de desenvolvimento...");
+
+  if (finalChoice === "styled-components") {
+    execCommand(
+      "npm install @types/styled-components eslint-plugin-prettier prettier eslint-config-prettier --save-dev"
+    );
+  } else {
+    execCommand(
+      "npm install eslint-plugin-prettier prettier eslint-config-prettier --save-dev"
+    );
+  }
+
+  // 🏗 Criando estrutura de pastas
+  console.log("📂 Criando estrutura de pastas...");
+  const folders = [
+    "src/styles",
+    "src/components/ui",
+    "src/components/layout",
+    "src/components/layout/header",
+    "src/components/layout/footer",
+    "src/lib",
+    "src/hooks",
+    "src/utils",
+    "src/redux",
+    "src/redux/slices",
+    "src/types",
+    ".vscode",
+  ];
+  folders.forEach((folder) =>
+    fs.mkdirSync(path.join(appPath, folder), { recursive: true })
+  );
+
+  // 📝 Criando arquivos de configuração...
+  console.log("📄 Criando arquivos de configuração...");
+
+  // VSCode settings
+  fs.writeFileSync(
+    ".vscode/settings.json",
+    JSON.stringify(
+      {
+        "editor.formatOnSave": true,
+        "editor.codeActionsOnSave": {
+          "source.fixAll.eslint": true,
+          "source.fixAll": true,
+        },
+        "editor.defaultFormatter": "esbenp.prettier-vscode",
+        "[typescriptreact]": {
+          "editor.defaultFormatter": "vscode.typescript-language-features",
+        },
+        "typescript.tsdk": "node_modules/typescript/lib",
       },
-      "editor.defaultFormatter": "esbenp.prettier-vscode",
-      "[typescriptreact]": {
-        "editor.defaultFormatter": "vscode.typescript-language-features",
+      null,
+      2
+    )
+  );
+
+  // Prettierrc settings
+  fs.writeFileSync(
+    ".prettierrc",
+    JSON.stringify(
+      {
+        trailingComma: "none",
+        semi: false,
+        singleQuote: true,
+        printWidth: 150,
+        arrowParens: "avoid",
       },
-      "typescript.tsdk": "node_modules/typescript/lib",
-    },
-    null,
-    2
-  )
-);
+      null,
+      2
+    )
+  );
 
-// Prettierrc settings
-fs.writeFileSync(
-  ".prettierrc",
-  JSON.stringify(
-    {
-      trailingComma: "none",
-      semi: false,
-      singleQuote: true,
-      printWidth: 150,
-      arrowParens: "avoid",
-    },
-    null,
-    2
-  )
-);
-
-// Editorconfig settings
-fs.writeFileSync(
-  ".editorconfig",
-  `root = true
+  // Editorconfig settings
+  fs.writeFileSync(
+    ".editorconfig",
+    `root = true
 
 [*]
 indent_style = space
@@ -107,15 +177,23 @@ charset = utf-8
 trim_trailing_whitespace = true
 insert_final_newline = true
 `
-);
+  );
 
-// Next.js config
-fs.writeFileSync(
-  "next.config.js",
-  `/** @type {import('next').NextConfig} */
+  // Next.js config
+  if (finalChoice === "styled-components") {
+    fs.writeFileSync(
+      "next.config.js",
+      `/** @type {import('next').NextConfig} */
 const nextConfig = {
   experimental: {
-    appDir: true,
+    turbo: {
+      rules: {
+        '*.svg': {
+          loaders: ['@svgr/webpack'],
+          as: '*.js',
+        },
+      },
+    },
   },
   compiler: {
     styledComponents: true,
@@ -127,12 +205,36 @@ const nextConfig = {
 
 module.exports = nextConfig
 `
-);
+    );
+  } else {
+    fs.writeFileSync(
+      "next.config.js",
+      `/** @type {import('next').NextConfig} */
+const nextConfig = {
+  experimental: {
+    turbo: {
+      rules: {
+        '*.svg': {
+          loaders: ['@svgr/webpack'],
+          as: '*.js',
+        },
+      },
+    },
+  },
+  images: {
+    domains: ['placehold.co'],
+  },
+}
 
-// Theme configuration
-fs.writeFileSync(
-  "src/styles/theme.ts",
-  `export const theme = {
+module.exports = nextConfig
+`
+    );
+  }
+
+  // Theme configuration
+  fs.writeFileSync(
+    "src/styles/theme.ts",
+    `export const theme = {
   breakpoints: {
     sm: '480px',
     md: '768px',
@@ -217,377 +319,19 @@ export const themeConfig = {
   dark: darkTheme
 }
 `
-);
-
-// Global styles for Next.js
-fs.writeFileSync(
-  "src/styles/globals.css",
-  `@tailwind base;
-@tailwind components;
-@tailwind utilities;
-
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-  list-style: none;
-}
-
-body {
-  font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  background-color: #011627;
-  color: #fff;
-  transition: background-color 0.3s, color 0.3s;
-}
-
-html {
-  scroll-behavior: smooth;
-}
-
-@layer base {
-  :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
-    --radius: 0.5rem;
-  }
-
-  .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
-  }
-}
-
-@layer base {
-  * {
-    @apply border-border;
-  }
-  body {
-    @apply bg-background text-foreground;
-  }
-}
-`
-);
-
-// Função utilitária para perguntar no terminal
-function askQuestion(query) {
-  const rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout,
-  });
-
-  return new Promise((resolve) =>
-    rl.question(query, (ans) => {
-      rl.close();
-      resolve(ans);
-    })
   );
-}
 
-// 🎨 Criando componentes e templates
-console.log("🎨 Criando componentes de layout...");
-
-// Header component
-fs.mkdirSync("src/components/layout/header", { recursive: true });
-fs.writeFileSync(
-  "src/components/layout/header/Header.tsx",
-  `'use client'
-
-import Link from 'next/link'
-import Image from 'next/image'
-import { HeaderContainer, Logo, NavMenu, NavItem } from './HeaderStyles'
-
-const Header = () => {
-  return (
-    <HeaderContainer>
-      <Logo>
-        <Image 
-          src="https://placehold.co/150x50?text=Logo" 
-          alt="Logo" 
-          width={150}
-          height={50}
-        />
-      </Logo>
-      <NavMenu>
-        <NavItem>
-          <Link href="/features">Features</Link>
-        </NavItem>
-        <NavItem>
-          <Link href="/pricing">Pricing</Link>
-        </NavItem>
-        <NavItem>
-          <Link href="/blog">Blog</Link>
-        </NavItem>
-        <NavItem>
-          <Link href="/support">Support</Link>
-        </NavItem>
-      </NavMenu>
-    </HeaderContainer>
-  )
-}
-
-export default Header`
-);
-
-fs.writeFileSync(
-  "src/components/layout/header/HeaderStyles.ts",
-  `'use client'
-
-import styled from 'styled-components'
-import { theme } from '@/styles/theme'
-
-export const HeaderContainer = styled.header\`
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 20px;
-  background-color: \${theme.colors.primaryColor};
-  border-bottom: 1px solid \${theme.colors.secondaryColor};
-  position: sticky;
-  top: 0;
-  z-index: 100;
-  
-  @media (max-width: \${theme.breakpoints.md}) {
-    flex-direction: column;
-    gap: 15px;
-  }
-\`
-
-export const Logo = styled.div\`
-  display: flex;
-  align-items: center;
-  
-  img {
-    width: auto;
-    height: 40px;
-  }
-\`
-
-export const NavMenu = styled.nav\`
-  display: flex;
-  gap: 30px;
-  
-  @media (max-width: \${theme.breakpoints.md}) {
-    gap: 20px;
-    flex-wrap: wrap;
-    justify-content: center;
-  }
-\`
-
-export const NavItem = styled.div\`
-  a {
-    text-decoration: none;
-    color: \${theme.colors.textColor};
-    font-weight: 500;
-    font-size: 16px;
-    transition: color 0.3s ease;
-    position: relative;
-
-    &:hover {
-      color: \${theme.colors.blue2};
-    }
-
-    &::after {
-      content: '';
-      position: absolute;
-      width: 0;
-      height: 2px;
-      bottom: -5px;
-      left: 0;
-      background-color: \${theme.colors.blue2};
-      transition: width 0.3s ease;
-    }
-
-    &:hover::after {
-      width: 100%;
-    }
-  }
-\``
-);
-
-// Footer component
-fs.mkdirSync("src/components/layout/footer", { recursive: true });
-fs.writeFileSync(
-  "src/components/layout/footer/Footer.tsx",
-  `'use client'
-
-import { FaGithub, FaInstagram, FaLinkedin } from 'react-icons/fa'
-import { FooterContainer, SocialLinks, FooterContent } from './FooterStyles'
-
-const getCurrentYear = () => {
-  const date = new Date()
-  return date.getFullYear()
-}
-
-const Footer = () => {
-  return (
-    <FooterContainer>
-      <FooterContent>
-        <p>&copy; {getCurrentYear()} RNT Projects. All rights reserved.</p>
-        <SocialLinks className="social-links">
-          <a href="https://github.com" target="_blank" rel="noopener noreferrer" aria-label="GitHub">
-            <FaGithub size={24} />
-          </a>
-          <a href="https://linkedin.com" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn">
-            <FaLinkedin size={24} />
-          </a>
-          <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" aria-label="Instagram">
-            <FaInstagram size={24} />
-          </a>
-        </SocialLinks>
-      </FooterContent>
-    </FooterContainer>
-  )
-}
-
-export default Footer`
-);
-
-fs.writeFileSync(
-  "src/components/layout/footer/FooterStyles.ts",
-  `'use client'
-
-import styled from 'styled-components'
-import { theme } from '@/styles/theme'
-
-export const FooterContainer = styled.footer\`
-  background-color: \${theme.colors.primaryColor};
-  border-top: 1px solid \${theme.colors.secondaryColor};
-  padding: 40px 20px 20px;
-  margin-top: auto;
-\`
-
-export const FooterContent = styled.div\`
-  max-width: 1200px;
-  margin: 0 auto;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 20px;
-  text-align: center;
-
-  p {
-    color: \${theme.colors.textColor};
-    font-size: 14px;
-    opacity: 0.8;
+  // Criar arquivos específicos baseados na escolha
+  if (finalChoice === "styled-components") {
+    await createStyledComponentsFiles();
+  } else {
+    await createTailwindFiles();
   }
 
-  @media (max-width: \${theme.breakpoints.md}) {
-    gap: 15px;
-    
-    p {
-      font-size: 12px;
-    }
-  }
-\`
-
-export const SocialLinks = styled.div\`
-  display: flex;
-  gap: 20px;
-  align-items: center;
-
-  a {
-    color: \${theme.colors.textColor};
-    transition: all 0.3s ease;
-    padding: 8px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-
-    &:hover {
-      color: \${theme.colors.blue2};
-      background-color: rgba(30, 144, 255, 0.1);
-      transform: translateY(-2px);
-    }
-  }
-
-  @media (max-width: \${theme.breakpoints.md}) {
-    gap: 15px;
-    
-    a {
-      padding: 6px;
-      
-      svg {
-        width: 20px;
-        height: 20px;
-      }
-    }
-  }
-\``
-);
-
-// Styled Components Registry
-fs.writeFileSync(
-  "src/lib/styled-components-registry.tsx",
-  `'use client'
-
-import React, { useState } from 'react'
-import { useServerInsertedHTML } from 'next/navigation'
-import { ServerStyleSheet, StyleSheetManager } from 'styled-components'
-
-export default function StyledComponentsRegistry({
-  children,
-}: {
-  children: React.ReactNode
-}) {
-  // Only create stylesheet once with lazy initial state
-  // x-ref: https://reactjs.org/docs/hooks-reference.html#lazy-initial-state
-  const [styledComponentsStyleSheet] = useState(() => new ServerStyleSheet())
-
-  useServerInsertedHTML(() => {
-    const styles = styledComponentsStyleSheet.getStyleElement()
-    styledComponentsStyleSheet.instance.clearTag()
-    return <>{styles}</>
-  })
-
-  if (typeof window !== 'undefined') return <>{children}</>
-
-  return (
-    <StyleSheetManager sheet={styledComponentsStyleSheet.instance}>
-      {children}
-    </StyleSheetManager>
-  )
-}`
-);
-
-// Providers
-fs.writeFileSync(
-  "src/components/providers.tsx",
-  `'use client'
+  // Providers
+  fs.writeFileSync(
+    "src/components/providers.tsx",
+    `'use client'
 
 import { Provider } from 'react-redux'
 import { store } from '@/redux/store'
@@ -599,12 +343,12 @@ export function Providers({ children }: { children: React.ReactNode }) {
     </Provider>
   )
 }`
-);
+  );
 
-// Redux Store
-fs.writeFileSync(
-  "src/redux/store.ts",
-  `import { combineReducers, configureStore as toolkitConfigureStore } from '@reduxjs/toolkit'
+  // Redux Store
+  fs.writeFileSync(
+    "src/redux/store.ts",
+    `import { combineReducers, configureStore as toolkitConfigureStore } from '@reduxjs/toolkit'
 
 // Import your slices here
 // import counterSlice from './slices/counterSlice'
@@ -634,12 +378,111 @@ export const store = configureStore()
 export type AppStore = ReturnType<typeof configureStore>
 export type AppDispatch = AppStore['dispatch']
 export type RootReducer = typeof rootReducer`
-);
+  );
 
-// Home Styles
-fs.writeFileSync(
-  "src/styles/HomeStyles.ts",
-  `'use client'
+  // Criar página inicial personalizada
+  await createCustomHomePage(finalChoice);
+
+  // Criar layout personalizado
+  await createCustomLayout(finalChoice);
+
+  console.log("✅ Projeto criado com sucesso!");
+  console.log(`📁 Navegue para: cd ${appName}`);
+  console.log("🚀 Execute: npm run dev");
+  console.log(
+    `🎨 Configurado com: ${
+      finalChoice === "styled-components" ? "Styled Components" : "Tailwind CSS"
+    }`
+  );
+  console.log("💙 Criado por RNT");
+}
+
+async function createStyledComponentsFiles() {
+  // Global Styles para Styled Components
+  fs.writeFileSync(
+    "src/styles/globalStyles.tsx",
+    `'use client'
+
+import { createGlobalStyle } from 'styled-components';
+import { theme } from './theme';
+
+export const GlobalStyles = createGlobalStyle\`
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  body {
+    background-color: \${theme.colors.primaryColor};
+    color: \${theme.colors.textColor};
+    font-family: 'Inter', sans-serif;
+  }
+
+  a {
+    text-decoration: none;
+    color: inherit;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  ul, ol {
+    list-style: none;
+  }
+
+  button {
+    border: none;
+    background: none;
+    cursor: pointer;
+  }
+
+  input, textarea {
+    outline: none;
+  }
+\`;
+`
+  );
+
+  // Styled Components Registry
+  fs.writeFileSync(
+    "src/lib/styled-components-registry.tsx",
+    `'use client'
+
+import React, { useState } from 'react'
+import { useServerInsertedHTML } from 'next/navigation'
+import { ServerStyleSheet, StyleSheetManager } from 'styled-components'
+
+export default function StyledComponentsRegistry({
+  children,
+}: {
+  children: React.ReactNode
+}) {
+  // Only create stylesheet once with lazy initial state
+  // x-ref: https://reactjs.org/docs/hooks-reference.html#lazy-initial-state
+  const [styledComponentsStyleSheet] = useState(() => new ServerStyleSheet())
+
+  useServerInsertedHTML(() => {
+    const styles = styledComponentsStyleSheet.getStyleElement()
+    styledComponentsStyleSheet.instance.clearTag()
+    return <>{styles}</>
+  })
+
+  if (typeof window !== 'undefined') return <>{children}</>
+
+  return (
+    <StyleSheetManager sheet={styledComponentsStyleSheet.instance}>
+      {children}
+    </StyleSheetManager>
+  )
+}`
+  );
+
+  // Home Styles para Styled Components
+  fs.writeFileSync(
+    "src/styles/HomeStyles.ts",
+    `'use client'
 
 import styled from 'styled-components'
 import { theme } from './theme'
@@ -732,43 +575,531 @@ export const FeatureCard = styled.div\`
     border-color: \${theme.colors.blue2};
   }
 
+  .icon {
+    font-size: 3rem;
+    color: \${theme.colors.blue2};
+    margin-bottom: 20px;
+  }
+
   h3 {
     font-size: 1.5rem;
     color: \${theme.colors.textColor};
     margin-bottom: 15px;
-    font-weight: 600;
   }
 
   p {
     color: \${theme.colors.gray2};
     line-height: 1.6;
-    font-size: 1rem;
   }
 
-  @media (max-width: \${theme.breakpoints.sm}) {
+  @media (max-width: \${theme.breakpoints.md}) {
     padding: 30px 20px;
+    
+    .icon {
+      font-size: 2.5rem;
+    }
     
     h3 {
       font-size: 1.3rem;
     }
   }
-\``
-);
+\`
 
-// Layout and Page files
-fs.writeFileSync(
-  "src/app/layout.tsx",
-  `import type { Metadata } from 'next'
+export const CTASection = styled.section\`
+  text-align: center;
+  margin-top: 80px;
+  padding: 60px 20px;
+  background: linear-gradient(135deg, rgba(30, 144, 255, 0.1), rgba(225, 163, 42, 0.1));
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+
+  h2 {
+    font-size: 2.5rem;
+    color: \${theme.colors.textColor};
+    margin-bottom: 20px;
+  }
+
+  p {
+    font-size: 1.1rem;
+    color: \${theme.colors.gray2};
+    margin-bottom: 30px;
+    max-width: 500px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  @media (max-width: \${theme.breakpoints.md}) {
+    margin-top: 60px;
+    padding: 40px 20px;
+    
+    h2 {
+      font-size: 2rem;
+    }
+    
+    p {
+      font-size: 1rem;
+    }
+  }
+\`
+
+export const Button = styled.button\`
+  background: linear-gradient(135deg, \${theme.colors.blue2}, \${theme.colors.yellow2});
+  color: white;
+  padding: 15px 30px;
+  border: none;
+  border-radius: 8px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 25px rgba(30, 144, 255, 0.3);
+  }
+
+  &:active {
+    transform: translateY(0);
+  }
+
+  @media (max-width: \${theme.breakpoints.md}) {
+    padding: 12px 25px;
+    font-size: 1rem;
+  }
+\`
+`
+  );
+
+  // Header Styles para Styled Components
+  fs.writeFileSync(
+    "src/components/layout/header/HeaderStyles.ts",
+    `'use client'
+
+import styled from 'styled-components'
+import { theme } from '@/styles/theme'
+
+export const HeaderContainer = styled.header\`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px;
+  background-color: \${theme.colors.primaryColor};
+  border-bottom: 1px solid \${theme.colors.secondaryColor};
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  
+  @media (max-width: \${theme.breakpoints.md}) {
+    flex-direction: column;
+    gap: 15px;
+  }
+\`
+
+export const Logo = styled.div\`
+  display: flex;
+  align-items: center;
+  
+  h1 {
+    color: \${theme.colors.textColor};
+    font-size: 1.8rem;
+    font-weight: 700;
+    background: linear-gradient(135deg, \${theme.colors.blue2}, \${theme.colors.yellow2});
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+\`
+
+export const NavMenu = styled.nav\`
+  display: flex;
+  gap: 30px;
+  
+  @media (max-width: \${theme.breakpoints.md}) {
+    gap: 20px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+\`
+
+export const NavItem = styled.div\`
+  a {
+    text-decoration: none;
+    color: \${theme.colors.textColor};
+    font-weight: 500;
+    font-size: 16px;
+    transition: color 0.3s ease;
+    position: relative;
+
+    &:hover {
+      color: \${theme.colors.blue2};
+    }
+
+    &::after {
+      content: '';
+      position: absolute;
+      width: 0;
+      height: 2px;
+      bottom: -5px;
+      left: 0;
+      background-color: \${theme.colors.blue2};
+      transition: width 0.3s ease;
+    }
+
+    &:hover::after {
+      width: 100%;
+    }
+  }
+\`
+`
+  );
+
+  // Footer Styles para Styled Components
+  fs.writeFileSync(
+    "src/components/layout/footer/FooterStyles.ts",
+    `'use client'
+
+import styled from 'styled-components'
+import { theme } from '@/styles/theme'
+
+export const FooterContainer = styled.footer\`
+  background-color: \${theme.colors.primaryColor};
+  border-top: 1px solid \${theme.colors.secondaryColor};
+  padding: 40px 20px 20px;
+  margin-top: auto;
+\`
+
+export const FooterContent = styled.div\`
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  text-align: center;
+
+  p {
+    color: \${theme.colors.textColor};
+    font-size: 14px;
+    opacity: 0.8;
+  }
+
+  @media (max-width: \${theme.breakpoints.md}) {
+    gap: 15px;
+    
+    p {
+      font-size: 12px;
+    }
+  }
+\`
+
+export const SocialLinks = styled.div\`
+  display: flex;
+  gap: 20px;
+  align-items: center;
+
+  a {
+    color: \${theme.colors.textColor};
+    transition: all 0.3s ease;
+    padding: 8px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    &:hover {
+      color: \${theme.colors.blue2};
+      background-color: rgba(30, 144, 255, 0.1);
+      transform: translateY(-2px);
+    }
+  }
+
+  @media (max-width: \${theme.breakpoints.md}) {
+    gap: 15px;
+    
+    a {
+      padding: 6px;
+      
+      svg {
+        width: 20px;
+        height: 20px;
+      }
+    }
+  }
+\`
+`
+  );
+}
+
+async function createTailwindFiles() {
+  // Global styles para Tailwind
+  fs.writeFileSync(
+    "src/styles/globals.css",
+    `@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  list-style: none;
+}
+
+body {
+  font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background-color: #011627;
+  color: #fff;
+  transition: background-color 0.3s, color 0.3s;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+    --primary: 222.2 47.4% 11.2%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+    --muted: 210 40% 96%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 210 40% 96%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 222.2 84% 4.9%;
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 210 40% 98%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 212.7 26.8% 83.9%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+@layer components {
+  .gradient-text {
+    @apply bg-gradient-to-r from-blue-500 to-yellow-400 bg-clip-text text-transparent;
+  }
+  
+  .feature-card {
+    @apply bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-8 text-center transition-all duration-300 hover:bg-white/8 hover:border-blue-500 hover:-translate-y-1;
+  }
+  
+  .cta-button {
+    @apply bg-gradient-to-r from-blue-500 to-yellow-400 text-white px-8 py-4 rounded-lg font-semibold text-lg uppercase tracking-wide transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-blue-500/30;
+  }
+}
+`
+  );
+}
+
+async function createCustomHomePage(cssChoice) {
+  if (cssChoice === "styled-components") {
+    fs.writeFileSync(
+      "src/app/page.tsx",
+      `'use client'
+
+import { FaReact, FaCode, FaRocket } from 'react-icons/fa'
+import { 
+  MainContainer, 
+  ContentSection, 
+  HeroSection, 
+  FeatureGrid, 
+  FeatureCard, 
+  CTASection, 
+  Button 
+} from '@/styles/HomeStyles'
+
+export default function Home() {
+  return (
+    <MainContainer>
+      <ContentSection>
+        <HeroSection>
+          <h1>RNT Next CLI</h1>
+          <p>
+            Um CLI poderoso para criar aplicações Next.js com configurações pré-definidas e estrutura otimizada.
+            Criado por RNT para acelerar o desenvolvimento de projetos modernos.
+          </p>
+        </HeroSection>
+
+        <FeatureGrid>
+          <FeatureCard>
+            <div className="icon">
+              <FaReact />
+            </div>
+            <h3>Next.js 15+</h3>
+            <p>
+              Versão mais recente do Next.js com App Router, Turbopack e todas as funcionalidades modernas.
+            </p>
+          </FeatureCard>
+
+          <FeatureCard>
+            <div className="icon">
+              <FaCode />
+            </div>
+            <h3>Styled Components</h3>
+            <p>
+              CSS-in-JS com Styled Components, temas personalizáveis e componentes reutilizáveis.
+            </p>
+          </FeatureCard>
+
+          <FeatureCard>
+            <div className="icon">
+              <FaRocket />
+            </div>
+            <h3>Pronto para Produção</h3>
+            <p>
+              ESLint, Prettier, TypeScript e Redux Toolkit configurados para máxima produtividade.
+            </p>
+          </FeatureCard>
+        </FeatureGrid>
+
+        <CTASection>
+          <h2>Comece Agora</h2>
+          <p>
+            Execute o comando abaixo e tenha um projeto Next.js completo em segundos.
+          </p>
+          <Button onClick={() => navigator.clipboard.writeText('npx rnt-next meu-projeto')}>
+            Copiar Comando
+          </Button>
+        </CTASection>
+      </ContentSection>
+    </MainContainer>
+  )
+}
+`
+    );
+  } else {
+    fs.writeFileSync(
+      "src/app/page.tsx",
+      `'use client'
+
+import { FaReact, FaCode, FaRocket } from 'react-icons/fa'
+
+export default function Home() {
+  const copyCommand = () => {
+    navigator.clipboard.writeText('npx rnt-next meu-projeto')
+  }
+
+  return (
+    <div className="min-h-screen flex flex-col bg-[#011627]">
+      <main className="flex-1 px-5 py-15 max-w-6xl mx-auto w-full">
+        <section className="text-center mb-20">
+          <h1 className="text-5xl md:text-6xl font-bold text-white mb-5 gradient-text">
+            RNT Next CLI
+          </h1>
+          <p className="text-xl text-gray-400 max-w-2xl mx-auto leading-relaxed">
+            Um CLI poderoso para criar aplicações Next.js com configurações pré-definidas e estrutura otimizada.
+            Criado por RNT para acelerar o desenvolvimento de projetos modernos.
+          </p>
+        </section>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-10">
+          <div className="feature-card">
+            <div className="text-5xl text-blue-500 mb-5">
+              <FaReact />
+            </div>
+            <h3 className="text-2xl text-white mb-4">Next.js 15+</h3>
+            <p className="text-gray-400 leading-relaxed">
+              Versão mais recente do Next.js com App Router, Turbopack e todas as funcionalidades modernas.
+            </p>
+          </div>
+
+          <div className="feature-card">
+            <div className="text-5xl text-blue-500 mb-5">
+              <FaCode />
+            </div>
+            <h3 className="text-2xl text-white mb-4">Tailwind CSS</h3>
+            <p className="text-gray-400 leading-relaxed">
+              Framework CSS utilitário para desenvolvimento rápido e responsivo com design moderno.
+            </p>
+          </div>
+
+          <div className="feature-card">
+            <div className="text-5xl text-blue-500 mb-5">
+              <FaRocket />
+            </div>
+            <h3 className="text-2xl text-white mb-4">Pronto para Produção</h3>
+            <p className="text-gray-400 leading-relaxed">
+              ESLint, Prettier, TypeScript e Redux Toolkit configurados para máxima produtividade.
+            </p>
+          </div>
+        </div>
+
+        <section className="text-center mt-20 p-15 bg-gradient-to-r from-blue-500/10 to-yellow-400/10 rounded-2xl border border-white/10">
+          <h2 className="text-4xl text-white mb-5">Comece Agora</h2>
+          <p className="text-xl text-gray-400 mb-8 max-w-lg mx-auto">
+            Execute o comando abaixo e tenha um projeto Next.js completo em segundos.
+          </p>
+          <button onClick={copyCommand} className="cta-button">
+            Copiar Comando
+          </button>
+        </section>
+      </main>
+    </div>
+  )
+}
+`
+    );
+  }
+}
+
+async function createCustomLayout(cssChoice) {
+  if (cssChoice === "styled-components") {
+    // Layout com Styled Components
+    fs.writeFileSync(
+      "src/app/layout.tsx",
+      `import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
-import '@/styles/globals.css'
 import StyledComponentsRegistry from '@/lib/styled-components-registry'
+import { GlobalStyles } from '@/styles/globalStyles'
 import { Providers } from '@/components/providers'
+import Header from '@/components/layout/header/Header'
+import Footer from '@/components/layout/footer/Footer'
 
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'RNT Next App',
-  description: 'Aplicação Next.js criada com RNT CLI',
+  title: 'RNT Next CLI - Criado por RNT',
+  description: 'CLI para criar aplicações Next.js com configurações pré-definidas',
 }
 
 export default function RootLayout({
@@ -780,216 +1111,235 @@ export default function RootLayout({
     <html lang="pt-BR">
       <body className={inter.className}>
         <StyledComponentsRegistry>
+          <GlobalStyles />
           <Providers>
+            <Header />
             {children}
+            <Footer />
           </Providers>
         </StyledComponentsRegistry>
       </body>
     </html>
   )
-}`
-);
+}
+`
+    );
 
-fs.writeFileSync(
-  "src/app/page.tsx",
-  `'use client'
+    // Header com Styled Components
+    fs.writeFileSync(
+      "src/components/layout/header/Header.tsx",
+      `'use client'
 
+import Link from 'next/link'
+import { HeaderContainer, Logo, NavMenu, NavItem } from './HeaderStyles'
+
+const Header = () => {
+  return (
+    <HeaderContainer>
+      <Logo>
+        <h1>RNT</h1>
+      </Logo>
+      <NavMenu>
+        <NavItem>
+          <Link href="/">Home</Link>
+        </NavItem>
+        <NavItem>
+          <Link href="/docs">Docs</Link>
+        </NavItem>
+        <NavItem>
+          <Link href="/examples">Examples</Link>
+        </NavItem>
+        <NavItem>
+          <Link href="/about">About</Link>
+        </NavItem>
+      </NavMenu>
+    </HeaderContainer>
+  )
+}
+
+export default Header`
+    );
+
+    // Footer com Styled Components
+    fs.writeFileSync(
+      "src/components/layout/footer/Footer.tsx",
+      `'use client'
+
+import { FaGithub, FaInstagram, FaLinkedin } from 'react-icons/fa'
+import { FooterContainer, SocialLinks, FooterContent } from './FooterStyles'
+
+const getCurrentYear = () => {
+  const date = new Date()
+  return date.getFullYear()
+}
+
+const Footer = () => {
+  return (
+    <FooterContainer>
+      <FooterContent>
+        <p>&copy; {getCurrentYear()} RNT Projects. Todos os direitos reservados.</p>
+        <SocialLinks className="social-links">
+          <a href="https://github.com" target="_blank" rel="noopener noreferrer" aria-label="GitHub">
+            <FaGithub size={24} />
+          </a>
+          <a href="https://linkedin.com" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn">
+            <FaLinkedin size={24} />
+          </a>
+          <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" aria-label="Instagram">
+            <FaInstagram size={24} />
+          </a>
+        </SocialLinks>
+      </FooterContent>
+    </FooterContainer>
+  )
+}
+
+export default Footer`
+    );
+  } else {
+    // Layout com Tailwind
+    fs.writeFileSync(
+      "src/app/layout.tsx",
+      `import type { Metadata } from 'next'
+import { Inter } from 'next/font/google'
+import './globals.css'
+import { Providers } from '@/components/providers'
 import Header from '@/components/layout/header/Header'
 import Footer from '@/components/layout/footer/Footer'
-import { MainContainer, ContentSection, HeroSection, FeatureGrid, FeatureCard } from '@/styles/HomeStyles'
 
-export default function Home() {
+const inter = Inter({ subsets: ['latin'] })
+
+export const metadata: Metadata = {
+  title: 'RNT Next CLI - Criado por RNT',
+  description: 'CLI para criar aplicações Next.js com configurações pré-definidas',
+}
+
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode
+}) {
   return (
-    <MainContainer>
-      <Header />
-      
-      <ContentSection>
-        <HeroSection>
-          <h1>Bem-vindo ao RNT Next</h1>
-          <p>Uma aplicação Next.js moderna com configurações pré-definidas</p>
-        </HeroSection>
-
-        <FeatureGrid>
-          <FeatureCard>
-            <h3>⚡ Performance</h3>
-            <p>Otimizado para velocidade e eficiência</p>
-          </FeatureCard>
-          <FeatureCard>
-            <h3>🎨 Design Moderno</h3>
-            <p>Interface limpa e responsiva</p>
-          </FeatureCard>
-          <FeatureCard>
-            <h3>🔧 Configurado</h3>
-            <p>Tudo pronto para desenvolvimento</p>
-          </FeatureCard>
-        </FeatureGrid>
-      </ContentSection>
-
-      <Footer />
-    </MainContainer>
+    <html lang="pt-BR">
+      <body className={inter.className}>
+        <Providers>
+          <Header />
+          {children}
+          <Footer />
+        </Providers>
+      </body>
+    </html>
   )
-}`
-);
-
-// Função principal
-async function runOptions() {
-  const installI18n = await askQuestion("Deseja instalar i18n? (y/n): ");
-  if (installI18n.toLowerCase() === "y") {
-    console.log("📦 Instalando i18n...");
-    execCommand("npm install next-i18next react-i18next i18next");
-
-    console.log("📂 Criando configuração i18n...");
-    fs.writeFileSync(
-      "next-i18next.config.js",
-      `module.exports = {
-  i18n: {
-    defaultLocale: 'pt',
-    locales: ['pt', 'en'],
-  },
 }
 `
     );
 
-    fs.mkdirSync("public/locales/pt", { recursive: true });
-    fs.mkdirSync("public/locales/en", { recursive: true });
-
+    // Header com Tailwind
     fs.writeFileSync(
-      "public/locales/pt/common.json",
-      JSON.stringify(
-        {
-          home: "Início",
-          about: "Sobre",
-          contact: "Contato",
-          welcome: "Bem-vindo",
-        },
-        null,
-        2
-      )
-    );
+      "src/components/layout/header/Header.tsx",
+      `'use client'
 
-    fs.writeFileSync(
-      "public/locales/en/common.json",
-      JSON.stringify(
-        {
-          home: "Home",
-          about: "About",
-          contact: "Contact",
-          welcome: "Welcome",
-        },
-        null,
-        2
-      )
-    );
-  }
+import Link from 'next/link'
 
-  const installAuth = await askQuestion("Deseja instalar NextAuth.js? (y/n): ");
-  if (installAuth.toLowerCase() === "y") {
-    console.log("📦 Instalando NextAuth.js...");
-    execCommand("npm install next-auth");
-
-    console.log("📂 Criando configuração de autenticação...");
-    fs.mkdirSync("src/app/api/auth/[...nextauth]", { recursive: true });
-
-    fs.writeFileSync(
-      "src/app/api/auth/[...nextauth]/route.ts",
-      `import NextAuth from 'next-auth'
-import GoogleProvider from 'next-auth/providers/google'
-
-const handler = NextAuth({
-  providers: [
-    GoogleProvider({
-      clientId: process.env.GOOGLE_CLIENT_ID!,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-    }),
-  ],
-  callbacks: {
-    async session({ session, token }) {
-      return session
-    },
-    async jwt({ token, user }) {
-      return token
-    },
-  },
-})
-
-export { handler as GET, handler as POST }
-`
-    );
-
-    fs.writeFileSync(
-      ".env.local",
-      `NEXTAUTH_URL=http://localhost:3000
-NEXTAUTH_SECRET=your-secret-key-here
-GOOGLE_CLIENT_ID=your-google-client-id
-GOOGLE_CLIENT_SECRET=your-google-client-secret
-`
-    );
-  }
-
-  const installDatabase = await askQuestion("Deseja instalar Prisma? (y/n): ");
-  if (installDatabase.toLowerCase() === "y") {
-    console.log("📦 Instalando Prisma...");
-    execCommand("npm install prisma @prisma/client");
-    execCommand("npx prisma init");
-
-    console.log("📂 Criando configuração do banco de dados...");
-    fs.writeFileSync(
-      "prisma/schema.prisma",
-      `// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-generator client {
-  provider = "prisma-client-js"
+const Header = () => {
+  return (
+    <header className="flex items-center justify-between p-5 bg-[#011627] border-b border-[#023864] sticky top-0 z-50">
+      <div className="flex items-center">
+        <h1 className="text-white text-3xl font-bold gradient-text">RNT</h1>
+      </div>
+      <nav className="flex gap-8">
+        <Link 
+          href="/" 
+          className="text-white font-medium text-base transition-colors duration-300 hover:text-blue-500 relative group"
+        >
+          Home
+          <span className="absolute bottom-[-5px] left-0 w-0 h-0.5 bg-blue-500 transition-all duration-300 group-hover:w-full"></span>
+        </Link>
+        <Link 
+          href="/docs" 
+          className="text-white font-medium text-base transition-colors duration-300 hover:text-blue-500 relative group"
+        >
+          Docs
+          <span className="absolute bottom-[-5px] left-0 w-0 h-0.5 bg-blue-500 transition-all duration-300 group-hover:w-full"></span>
+        </Link>
+        <Link 
+          href="/examples" 
+          className="text-white font-medium text-base transition-colors duration-300 hover:text-blue-500 relative group"
+        >
+          Examples
+          <span className="absolute bottom-[-5px] left-0 w-0 h-0.5 bg-blue-500 transition-all duration-300 group-hover:w-full"></span>
+        </Link>
+        <Link 
+          href="/about" 
+          className="text-white font-medium text-base transition-colors duration-300 hover:text-blue-500 relative group"
+        >
+          About
+          <span className="absolute bottom-[-5px] left-0 w-0 h-0.5 bg-blue-500 transition-all duration-300 group-hover:w-full"></span>
+        </Link>
+      </nav>
+    </header>
+  )
 }
 
-datasource db {
-  provider = "sqlite"
-  url      = env("DATABASE_URL")
-}
-
-model User {
-  id    Int     @id @default(autoincrement())
-  email String  @unique
-  name  String?
-  posts Post[]
-}
-
-model Post {
-  id        Int     @id @default(autoincrement())
-  title     String
-  content   String?
-  published Boolean @default(false)
-  author    User    @relation(fields: [authorId], references: [id])
-  authorId  Int
-}
-`
+export default Header`
     );
 
+    // Footer com Tailwind
     fs.writeFileSync(
-      "src/lib/prisma.ts",
-      `import { PrismaClient } from '@prisma/client'
+      "src/components/layout/footer/Footer.tsx",
+      `'use client'
 
-const globalForPrisma = globalThis as unknown as {
-  prisma: PrismaClient | undefined
+import { FaGithub, FaInstagram, FaLinkedin } from 'react-icons/fa'
+
+const getCurrentYear = () => {
+  const date = new Date()
+  return date.getFullYear()
 }
 
-export const prisma = globalForPrisma.prisma ?? new PrismaClient()
+const Footer = () => {
+  return (
+    <footer className="bg-[#011627] border-t border-[#023864] py-10 px-5 mt-auto">
+      <div className="max-w-6xl mx-auto flex flex-col items-center gap-5 text-center">
+        <p className="text-white text-sm opacity-80">
+          &copy; {getCurrentYear()} RNT Projects. Todos os direitos reservados.
+        </p>
+        <div className="flex gap-5 items-center">
+          <a 
+            href="https://github.com" 
+            target="_blank" 
+            rel="noopener noreferrer" 
+            aria-label="GitHub"
+            className="text-white transition-all duration-300 p-2 rounded-full flex items-center justify-center hover:text-blue-500 hover:bg-blue-500/10 hover:-translate-y-1"
+          >
+            <FaGithub size={24} />
+          </a>
+          <a 
+            href="https://linkedin.com" 
+            target="_blank" 
+            rel="noopener noreferrer" 
+            aria-label="LinkedIn"
+            className="text-white transition-all duration-300 p-2 rounded-full flex items-center justify-center hover:text-blue-500 hover:bg-blue-500/10 hover:-translate-y-1"
+          >
+            <FaLinkedin size={24} />
+          </a>
+          <a 
+            href="https://instagram.com" 
+            target="_blank" 
+            rel="noopener noreferrer" 
+            aria-label="Instagram"
+            className="text-white transition-all duration-300 p-2 rounded-full flex items-center justify-center hover:text-blue-500 hover:bg-blue-500/10 hover:-translate-y-1"
+          >
+            <FaInstagram size={24} />
+          </a>
+        </div>
+      </div>
+    </footer>
+  )
+}
 
-if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma
-`
+export default Footer`
     );
   }
 }
 
-console.log("✅ Projeto Next.js criado com sucesso!");
-console.log("📁 Estrutura de pastas configurada!");
-console.log("⚙️ Configurações aplicadas!");
-
-// Executar opções adicionais
-runOptions().then(() => {
-  console.log("🎉 Configuração concluída!");
-  console.log(`📂 Navegue para o diretório: cd ${appName}`);
-  console.log("🚀 Execute: npm run dev");
-  console.log("🌐 Acesse: http://localhost:3000");
-});
-
+main().catch(console.error);

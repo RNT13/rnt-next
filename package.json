@@ -1,13 +1,23 @@
 {
   "name": "rnt-next",
-  "version": "1.0.0",
-  "description": "CLI para criar aplicações Next.js com configurações pré-definidas",
+  "version": "2.0.0",
+  "description": "CLI para criar aplicações Next.js com Styled Components ou Tailwind CSS, Turbopack e configurações pré-definidas - Criado por RNT",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": ["nextjs", "cli", "template", "react", "typescript"],
-  "author": "",
+  "keywords": [
+    "nextjs",
+    "cli",
+    "template",
+    "react",
+    "typescript",
+    "styled-components",
+    "tailwind",
+    "turbopack",
+    "rnt"
+  ],
+  "author": "RNT <https://renato-s-dev-page.vercel.app/>",
   "license": "ISC",
   "type": "commonjs",
   "bin": {
@@ -16,6 +26,16 @@
   "dependencies": {
     "fs-extra": "^11.1.1",
     "chalk": "^4.1.2"
-  }
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/RNT13/rnt-next-cli.git"
+  },
+  "bugs": {
+    "url": "https://github.com/RNT13/rnt-next-cli/issues"
+  },
+  "homepage": "https://github.com/RNT13/rnt-next-cli#readme"
 }
-

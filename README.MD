@@ -1,18 +1,17 @@
 # RNT Next CLI
 
-CLI para criar aplicações Next.js com configurações pré-definidas e estrutura otimizada.
+CLI para criar aplicações Next.js com configurações pré-definidas e estrutura otimizada. Criado por RNT.
 
 ## 🚀 Características
 
-- ✅ Next.js 14+ com App Router
+- ✅ Next.js 15+ com App Router e Turbopack
 - ✅ TypeScript configurado
-- ✅ Tailwind CSS
-- ✅ Styled Components
-- ✅ Redux Toolkit
-- ✅ ESLint + Prettier
+- ✅ Escolha entre Styled Components ou Tailwind CSS
+- ✅ Redux Toolkit para gerenciamento de estado
+- ✅ ESLint + Prettier configurados
 - ✅ Estrutura de componentes organizada
 - ✅ Configurações de desenvolvimento otimizadas
-- ✅ Opções para i18n, NextAuth.js e Prisma
+- ✅ Página inicial personalizada mencionando RNT
 
 ## 📦 Instalação
 
@@ -43,35 +42,29 @@ npm run dev
 
 Durante a execução, você será perguntado sobre:
 
-1. **i18n (Internacionalização)**
-
-   - Instala next-i18next
-   - Configura português e inglês
-   - Cria estrutura de traduções
-
-2. **NextAuth.js (Autenticação)**
-
-   - Instala NextAuth.js
-   - Configura provider do Google
-   - Cria arquivo de configuração
-
-3. **Prisma (Banco de dados)**
-   - Instala Prisma ORM
-   - Configura SQLite por padrão
-   - Cria schema básico
+1. **Biblioteca de CSS**
+   - **Styled Components**: CSS-in-JS com temas personalizáveis
+   - **Tailwind CSS**: Framework CSS utilitário para desenvolvimento rápido
 
 ## 📁 Estrutura do projeto
+
+### Com Styled Components
 
 ```
 meu-projeto/
 ├── src/
 │   ├── app/
 │   │   ├── layout.tsx
-│   │   └── page.tsx
+│   │   ├── page.tsx
+│   │   └── globals.css (apenas se Tailwind)
 │   ├── components/
 │   │   ├── layout/
 │   │   │   ├── header/
+│   │   │   │   ├── Header.tsx
+│   │   │   │   └── HeaderStyles.ts
 │   │   │   └── footer/
+│   │   │       ├── Footer.tsx
+│   │   │       └── FooterStyles.ts
 │   │   ├── ui/
 │   │   └── providers.tsx
 │   ├── lib/
@@ -80,9 +73,40 @@ meu-projeto/
 │   │   ├── store.ts
 │   │   └── slices/
 │   ├── styles/
-│   │   ├── globals.css
+│   │   ├── globalStyles.tsx
 │   │   ├── theme.ts
 │   │   └── HomeStyles.ts
+│   ├── hooks/
+│   ├── utils/
+│   └── types/
+├── public/
+├── next.config.js
+├── tsconfig.json
+└── package.json
+```
+
+### Com Tailwind CSS
+
+```
+meu-projeto/
+├── src/
+│   ├── app/
+│   │   ├── layout.tsx
+│   │   ├── page.tsx
+│   │   └── globals.css
+│   ├── components/
+│   │   ├── layout/
+│   │   │   ├── header/
+│   │   │   │   └── Header.tsx
+│   │   │   └── footer/
+│   │   │       └── Footer.tsx
+│   │   ├── ui/
+│   │   └── providers.tsx
+│   ├── redux/
+│   │   ├── store.ts
+│   │   └── slices/
+│   ├── styles/
+│   │   └── theme.ts
 │   ├── hooks/
 │   ├── utils/
 │   └── types/
@@ -97,34 +121,35 @@ meu-projeto/
 
 ### Core
 
-- **Next.js 14+** - Framework React
+- **Next.js 15+** - Framework React com App Router e Turbopack
 - **TypeScript** - Tipagem estática
+- **ESLint** - Linting configurado por padrão
+
+### Styling (Escolha durante instalação)
+
+- **Styled Components** - CSS-in-JS com temas e SSR
 - **Tailwind CSS** - Framework CSS utilitário
 
-### Styling
+### Outras bibliotecas
 
-- **Styled Components** - CSS-in-JS
 - **Framer Motion** - Animações
 - **React Icons** - Ícones
-
-### Estado
-
 - **Redux Toolkit** - Gerenciamento de estado
 - **React Redux** - Conectores React
 
 ### Desenvolvimento
 
-- **ESLint** - Linting
 - **Prettier** - Formatação de código
 - **VS Code Settings** - Configurações do editor
 
-### Opcionais
-
-- **next-i18next** - Internacionalização
-- **NextAuth.js** - Autenticação
-- **Prisma** - ORM para banco de dados
-
 ## ⚙️ Configurações incluídas
+
+### Next.js
+
+- App Router habilitado
+- Turbopack configurado
+- Suporte a Styled Components (se escolhido)
+- Configurações de imagem otimizadas
 
 ### ESLint + Prettier
 
@@ -138,11 +163,19 @@ meu-projeto/
 - Formatação automática
 - Extensões recomendadas
 
-### Styled Components
+### Styled Components (se escolhido)
 
 - Configuração para SSR
-- Registry para Next.js 13+
+- Registry para Next.js 15+
+- GlobalStyles.tsx configurado
 - Temas claro/escuro
+
+### Tailwind CSS (se escolhido)
+
+- Configuração completa
+- Classes utilitárias personalizadas
+- Suporte a dark mode
+- Componentes pré-estilizados
 
 ### Redux
 
@@ -153,7 +186,7 @@ meu-projeto/
 ## 🚀 Scripts disponíveis
 
 ```bash
-npm run dev      # Servidor de desenvolvimento
+npm run dev      # Servidor de desenvolvimento com Turbopack
 npm run build    # Build de produção
 npm run start    # Servidor de produção
 npm run lint     # Executar ESLint
@@ -166,6 +199,22 @@ npm run lint:fix # Corrigir problemas do ESLint
 
 Edite `src/styles/theme.ts` para personalizar cores e breakpoints.
 
+### Styled Components
+
+Se você escolheu Styled Components:
+
+- Edite `src/styles/globalStyles.tsx` para estilos globais
+- Use os temas em `src/styles/theme.ts`
+- Componentes estilizados estão em arquivos separados (ex: `HeaderStyles.ts`)
+
+### Tailwind CSS
+
+Se você escolheu Tailwind CSS:
+
+- Edite `src/app/globals.css` para estilos globais
+- Use `tailwind.config.js` para personalizar o tema
+- Classes utilitárias personalizadas estão disponíveis
+
 ### Componentes
 
 A estrutura de componentes está organizada em:
@@ -176,6 +225,16 @@ A estrutura de componentes está organizada em:
 ### Redux
 
 Adicione seus slices em `src/redux/slices/` e importe no store.
+
+## 🆕 Novidades da versão 2.0
+
+- ✅ Escolha entre Styled Components e Tailwind CSS
+- ✅ Next.js 15+ com Turbopack habilitado por padrão
+- ✅ App Router configurado automaticamente
+- ✅ ESLint habilitado por padrão
+- ✅ Página inicial personalizada mencionando RNT
+- ✅ Estrutura otimizada para ambas as opções de CSS
+- ✅ Configurações aprimoradas para desenvolvimento
 
 ## 🤝 Contribuição
 
@@ -197,7 +256,13 @@ Para problemas ou dúvidas:
 2. Certifique-se de estar usando Node.js 18+
 3. Execute `npm run lint` para verificar problemas de código
 
-## 👤 Author
+## 👤 Autor
 
-Made with 💙 by [Renato Minoita](https://www.linkedin.com/in/renato-luiz-0b072b247/)
-Check out more on [GitHub](https://github.com/RNT13)
+Criado com 💙 por **RNT**
+
+- GitHub: [RNT13](https://github.com/RNT13)
+- LinkedIn: [Renato Luiz](https://www.linkedin.com/in/renato-luiz-0b072b247/)
+
+---
+
+**RNT Next CLI** - Acelere seu desenvolvimento com Next.js!

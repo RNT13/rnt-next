@@ -241,6 +241,12 @@ module.exports = nextConfig
     lg: '1024px',
     xl: '1200px'
   },
+  media: {
+    sm: '(max-width: 480px)',
+    md: '(max-width: 768px)',
+    lg: '(max-width: 1024px)',
+    xl: '(max-width: 1200px)'
+  },
   colors: {
     primaryColor: '#011627',
     secondaryColor: '#023864',

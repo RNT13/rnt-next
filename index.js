@@ -38,7 +38,7 @@ async function main() {
 
   // Pergunta sobre a escolha do CSS
   const cssChoice = await askQuestion(
-    "Qual biblioteca de CSS você deseja usar?\n1. Styled Components\n2. Tailwind CSS\nEscolha (1 ou 2): "
+    "Qual biblioteca de CSS você deseja usar?\n1. Styled Components (sem Turbopack)\n2. Tailwind CSS (com Turbopack)\nEscolha (1 ou 2): "
   );
 
   const useStyledComponents = cssChoice === "1";
@@ -50,22 +50,30 @@ async function main() {
 
   const finalChoice = useStyledComponents ? "styled-components" : "tailwind";
 
+  // Pergunta sobre dependências de teste
+  const testChoice = await askQuestion(
+    "Deseja instalar dependências de teste (Jest, Testing Library)?\n1. Sim\n2. Não\nEscolha (1 ou 2): "
+  );
+
+  const installTests = testChoice === "1";
+
   console.log(
     `✅ Configurando projeto com ${
       finalChoice === "styled-components" ? "Styled Components" : "Tailwind CSS"
     }`
   );
+  console.log(`📦 Dependências de teste: ${installTests ? "Sim" : "Não"}`);
 
   // 🚀 Criando um novo projeto com Next.js e TypeScript
   console.log("📦 Criando novo projeto com Next.js...");
 
   if (finalChoice === "styled-components") {
-    // Criar projeto sem Tailwind para Styled Components
+    // Criar projeto sem Tailwind e sem Turbopack para Styled Components
     execCommand(
-      `npx --yes create-next-app@latest ${appName} --typescript --no-tailwind --eslint --app --src-dir --import-alias "@/*" --turbo`
+      `npx --yes create-next-app@latest ${appName} --typescript --no-tailwind --eslint --app --src-dir --import-alias "@/*"`
     );
   } else {
-    // Criar projeto com Tailwind
+    // Criar projeto com Tailwind e Turbopack
     execCommand(
       `npx --yes create-next-app@latest ${appName} --typescript --tailwind --eslint --app --src-dir --import-alias "@/*" --turbo`
     );
@@ -94,15 +102,19 @@ async function main() {
 
   console.log("📦 Instalando Dependências de desenvolvimento...");
 
+  let devDependencies =
+    "eslint-plugin-prettier prettier eslint-config-prettier";
+
   if (finalChoice === "styled-components") {
-    execCommand(
-      "npm install @types/styled-components eslint-plugin-prettier prettier eslint-config-prettier --save-dev"
-    );
-  } else {
-    execCommand(
-      "npm install eslint-plugin-prettier prettier eslint-config-prettier --save-dev"
-    );
+    devDependencies += " @types/styled-components";
   }
+
+  if (installTests) {
+    devDependencies +=
+      " jest @testing-library/react @testing-library/jest-dom @testing-library/user-event jest-environment-jsdom";
+  }
+
+  execCommand(`npm install ${devDependencies} --save-dev`);
 
   // 🏗 Criando estrutura de pastas
   console.log("📂 Criando estrutura de pastas...");
@@ -120,6 +132,11 @@ async function main() {
     "src/types",
     ".vscode",
   ];
+
+  if (installTests) {
+    folders.push("__tests__", "src/__tests__");
+  }
+
   folders.forEach((folder) =>
     fs.mkdirSync(path.join(appPath, folder), { recursive: true })
   );
@@ -185,16 +202,6 @@ insert_final_newline = true
       "next.config.js",
       `/** @type {import('next').NextConfig} */
 const nextConfig = {
-  experimental: {
-    turbo: {
-      rules: {
-        '*.svg': {
-          loaders: ['@svgr/webpack'],
-          as: '*.js',
-        },
-      },
-    },
-  },
   compiler: {
     styledComponents: true,
   },
@@ -231,10 +238,46 @@ module.exports = nextConfig
     );
   }
 
+  // Jest config se testes foram escolhidos
+  if (installTests) {
+    fs.writeFileSync(
+      "jest.config.js",
+      `const nextJest = require('next/jest')
+
+const createJestConfig = nextJest({
+  // Provide the path to your Next.js app to load next.config.js and .env files
+  dir: './',
+})
+
+// Add any custom config to be passed to Jest
+const customJestConfig = {
+  setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
+  moduleNameMapping: {
+    // Handle module aliases (this will be automatically configured for you based on your tsconfig.json paths)
+    '^@/(.*)$': '<rootDir>/src/$1',
+  },
+  testEnvironment: 'jest-environment-jsdom',
+}
+
+// createJestConfig is exported this way to ensure that next/jest can load the Next.js config which is async
+module.exports = createJestConfig(customJestConfig)
+`
+    );
+
+    fs.writeFileSync(
+      "jest.setup.js",
+      `import '@testing-library/jest-dom'
+`
+    );
+  }
+
   // Theme configuration
   fs.writeFileSync(
     "src/styles/theme.ts",
-    `export const theme = {
+    `// 🎨 ARQUIVO DE TEMA - Pode ser personalizado conforme necessário
+// Este arquivo contém as configurações de cores e breakpoints do projeto
+
+export const theme = {
   breakpoints: {
     sm: '480px',
     md: '768px',
@@ -329,15 +372,18 @@ export const themeConfig = {
 
   // Criar arquivos específicos baseados na escolha
   if (finalChoice === "styled-components") {
-    await createStyledComponentsFiles();
+    await createStyledComponentsFiles(installTests);
   } else {
-    await createTailwindFiles();
+    await createTailwindFiles(installTests);
   }
 
   // Providers
   fs.writeFileSync(
     "src/components/providers.tsx",
     `'use client'
+
+// 🔧 PROVIDERS - Configuração de contextos globais
+// Este arquivo pode ser expandido com novos providers conforme necessário
 
 import { Provider } from 'react-redux'
 import { store } from '@/redux/store'
@@ -354,7 +400,10 @@ export function Providers({ children }: { children: React.ReactNode }) {
   // Redux Store
   fs.writeFileSync(
     "src/redux/store.ts",
-    `import { combineReducers, configureStore as toolkitConfigureStore } from '@reduxjs/toolkit'
+    `// 🏪 REDUX STORE - Configuração do gerenciamento de estado
+// Adicione seus slices na pasta 'slices' e importe aqui
+
+import { combineReducers, configureStore as toolkitConfigureStore } from '@reduxjs/toolkit'
 
 // Import your slices here
 // import counterSlice from './slices/counterSlice'
@@ -387,10 +436,15 @@ export type RootReducer = typeof rootReducer`
   );
 
   // Criar página inicial personalizada
-  await createCustomHomePage(finalChoice);
+  await createCustomHomePage(finalChoice, installTests);
 
   // Criar layout personalizado
   await createCustomLayout(finalChoice);
+
+  // Criar testes de exemplo se solicitado
+  if (installTests) {
+    await createExampleTests(finalChoice);
+  }
 
   console.log("✅ Projeto criado com sucesso!");
   console.log(`📁 Navegue para: cd ${appName}`);
@@ -400,14 +454,23 @@ export type RootReducer = typeof rootReducer`
       finalChoice === "styled-components" ? "Styled Components" : "Tailwind CSS"
     }`
   );
+  if (finalChoice === "tailwind") {
+    console.log("⚡ Turbopack habilitado para desenvolvimento mais rápido");
+  }
+  if (installTests) {
+    console.log("🧪 Dependências de teste instaladas - Execute: npm test");
+  }
   console.log("💙 Criado por RNT");
 }
 
-async function createStyledComponentsFiles() {
+async function createStyledComponentsFiles(installTests) {
   // Global Styles para Styled Components
   fs.writeFileSync(
     "src/styles/globalStyles.tsx",
     `'use client'
+
+// 🎨 GLOBAL STYLES - Estilos globais com Styled Components
+// Este arquivo pode ser personalizado conforme suas necessidades de design
 
 import { createGlobalStyle } from 'styled-components';
 import { theme } from './theme';
@@ -456,6 +519,9 @@ export const GlobalStyles = createGlobalStyle\`
     "src/lib/styled-components-registry.tsx",
     `'use client'
 
+// 🔧 STYLED COMPONENTS REGISTRY - Necessário para SSR
+// Este arquivo é obrigatório para o funcionamento correto do Styled Components com Next.js
+
 import React, { useState } from 'react'
 import { useServerInsertedHTML } from 'next/navigation'
 import { ServerStyleSheet, StyleSheetManager } from 'styled-components'
@@ -489,6 +555,9 @@ export default function StyledComponentsRegistry({
   fs.writeFileSync(
     "src/styles/HomeStyles.ts",
     `'use client'
+
+// 🏠 HOME STYLES - Estilos da página inicial
+// ⚠️ ARQUIVO DELETÁVEL - Pode ser removido ao criar sua própria página
 
 import styled from 'styled-components'
 import { theme } from './theme'
@@ -683,6 +752,9 @@ export const Button = styled.button\`
     "src/components/layout/header/HeaderStyles.ts",
     `'use client'
 
+// 🧭 HEADER STYLES - Estilos do cabeçalho
+// ⚠️ ARQUIVO DELETÁVEL - Pode ser removido ao criar seu próprio header
+
 import styled from 'styled-components'
 import { theme } from '@/styles/theme'
 
@@ -766,6 +838,9 @@ export const NavItem = styled.div\`
     "src/components/layout/footer/FooterStyles.ts",
     `'use client'
 
+// 🦶 FOOTER STYLES - Estilos do rodapé
+// ⚠️ ARQUIVO DELETÁVEL - Pode ser removido ao criar seu próprio footer
+
 import styled from 'styled-components'
 import { theme } from '@/styles/theme'
 
@@ -838,11 +913,14 @@ export const SocialLinks = styled.div\`
   );
 }
 
-async function createTailwindFiles() {
+async function createTailwindFiles(installTests) {
   // Global styles para Tailwind
   fs.writeFileSync(
-    "src/styles/globals.css",
-    `@tailwind base;
+    "src/app/globals.css",
+    `/* 🎨 GLOBAL STYLES - Estilos globais com Tailwind CSS */
+/* Este arquivo pode ser personalizado conforme suas necessidades de design */
+
+@tailwind base;
 @tailwind components;
 @tailwind utilities;
 
@@ -920,6 +998,9 @@ html {
   }
 }
 
+/* 🎨 CLASSES UTILITÁRIAS PERSONALIZADAS */
+/* ⚠️ SEÇÃO DELETÁVEL - Pode ser removida ao criar seus próprios estilos */
+
 @layer components {
   .gradient-text {
     @apply bg-gradient-to-r from-blue-500 to-yellow-400 bg-clip-text text-transparent;
@@ -932,16 +1013,28 @@ html {
   .cta-button {
     @apply bg-gradient-to-r from-blue-500 to-yellow-400 text-white px-8 py-4 rounded-lg font-semibold text-lg uppercase tracking-wide transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-blue-500/30;
   }
+  
+  .nav-link {
+    @apply text-white font-medium text-base transition-colors duration-300 hover:text-blue-500 relative group;
+  }
+  
+  .nav-link::after {
+    @apply absolute bottom-[-5px] left-0 w-0 h-0.5 bg-blue-500 transition-all duration-300 group-hover:w-full;
+    content: '';
+  }
 }
 `
   );
 }
 
-async function createCustomHomePage(cssChoice) {
+async function createCustomHomePage(cssChoice, installTests) {
   if (cssChoice === "styled-components") {
     fs.writeFileSync(
       "src/app/page.tsx",
       `'use client'
+
+// 🏠 PÁGINA INICIAL - Exemplo com Styled Components
+// ⚠️ ARQUIVO DELETÁVEL - Pode ser removido ao criar sua própria página
 
 import { FaReact, FaCode, FaRocket } from 'react-icons/fa'
 import { 
@@ -973,7 +1066,7 @@ export default function Home() {
             </div>
             <h3>Next.js 15+</h3>
             <p>
-              Versão mais recente do Next.js com App Router, Turbopack e todas as funcionalidades modernas.
+              Versão mais recente do Next.js com App Router e todas as funcionalidades modernas.
             </p>
           </FeatureCard>
 
@@ -1017,6 +1110,9 @@ export default function Home() {
     fs.writeFileSync(
       "src/app/page.tsx",
       `'use client'
+
+// 🏠 PÁGINA INICIAL - Exemplo com Tailwind CSS
+// ⚠️ ARQUIVO DELETÁVEL - Pode ser removido ao criar sua própria página
 
 import { FaReact, FaCode, FaRocket } from 'react-icons/fa'
 
@@ -1136,6 +1232,9 @@ export default function RootLayout({
       "src/components/layout/header/Header.tsx",
       `'use client'
 
+// 🧭 HEADER COMPONENT - Cabeçalho da aplicação
+// ⚠️ ARQUIVO DELETÁVEL - Pode ser removido ao criar seu próprio header
+
 import Link from 'next/link'
 import { HeaderContainer, Logo, NavMenu, NavItem } from './HeaderStyles'
 
@@ -1170,6 +1269,9 @@ export default Header`
     fs.writeFileSync(
       "src/components/layout/footer/Footer.tsx",
       `'use client'
+
+// 🦶 FOOTER COMPONENT - Rodapé da aplicação
+// ⚠️ ARQUIVO DELETÁVEL - Pode ser removido ao criar seu próprio footer
 
 import { FaGithub, FaInstagram, FaLinkedin } from 'react-icons/fa'
 import { FooterContainer, SocialLinks, FooterContent } from './FooterStyles'
@@ -1245,6 +1347,9 @@ export default function RootLayout({
       "src/components/layout/header/Header.tsx",
       `'use client'
 
+// 🧭 HEADER COMPONENT - Cabeçalho da aplicação
+// ⚠️ ARQUIVO DELETÁVEL - Pode ser removido ao criar seu próprio header
+
 import Link from 'next/link'
 
 const Header = () => {
@@ -1254,33 +1359,17 @@ const Header = () => {
         <h1 className="text-white text-3xl font-bold gradient-text">RNT</h1>
       </div>
       <nav className="flex gap-8">
-        <Link 
-          href="/" 
-          className="text-white font-medium text-base transition-colors duration-300 hover:text-blue-500 relative group"
-        >
+        <Link href="/" className="nav-link">
           Home
-          <span className="absolute bottom-[-5px] left-0 w-0 h-0.5 bg-blue-500 transition-all duration-300 group-hover:w-full"></span>
         </Link>
-        <Link 
-          href="/docs" 
-          className="text-white font-medium text-base transition-colors duration-300 hover:text-blue-500 relative group"
-        >
+        <Link href="/docs" className="nav-link">
           Docs
-          <span className="absolute bottom-[-5px] left-0 w-0 h-0.5 bg-blue-500 transition-all duration-300 group-hover:w-full"></span>
         </Link>
-        <Link 
-          href="/examples" 
-          className="text-white font-medium text-base transition-colors duration-300 hover:text-blue-500 relative group"
-        >
+        <Link href="/examples" className="nav-link">
           Examples
-          <span className="absolute bottom-[-5px] left-0 w-0 h-0.5 bg-blue-500 transition-all duration-300 group-hover:w-full"></span>
         </Link>
-        <Link 
-          href="/about" 
-          className="text-white font-medium text-base transition-colors duration-300 hover:text-blue-500 relative group"
-        >
+        <Link href="/about" className="nav-link">
           About
-          <span className="absolute bottom-[-5px] left-0 w-0 h-0.5 bg-blue-500 transition-all duration-300 group-hover:w-full"></span>
         </Link>
       </nav>
     </header>
@@ -1294,6 +1383,9 @@ export default Header`
     fs.writeFileSync(
       "src/components/layout/footer/Footer.tsx",
       `'use client'
+
+// 🦶 FOOTER COMPONENT - Rodapé da aplicação
+// ⚠️ ARQUIVO DELETÁVEL - Pode ser removido ao criar seu próprio footer
 
 import { FaGithub, FaInstagram, FaLinkedin } from 'react-icons/fa'
 
@@ -1346,6 +1438,100 @@ const Footer = () => {
 export default Footer`
     );
   }
+}
+
+async function createExampleTests(cssChoice) {
+  // Teste de exemplo para a página inicial
+  fs.writeFileSync(
+    "__tests__/page.test.tsx",
+    `// 🧪 TESTE DA PÁGINA INICIAL
+// ⚠️ ARQUIVO DELETÁVEL - Pode ser removido ao criar seus próprios testes
+
+import { render, screen } from '@testing-library/react'
+import Home from '@/app/page'
+
+// Mock do Redux Provider
+jest.mock('@/components/providers', () => {
+  return {
+    Providers: ({ children }: { children: React.ReactNode }) => <div>{children}</div>
+  }
+})
+
+describe('Home Page', () => {
+  it('renders the main heading', () => {
+    render(<Home />)
+    
+    const heading = screen.getByText('RNT Next CLI')
+    expect(heading).toBeInTheDocument()
+  })
+
+  it('renders the description', () => {
+    render(<Home />)
+    
+    const description = screen.getByText(/Um CLI poderoso para criar aplicações Next.js/i)
+    expect(description).toBeInTheDocument()
+  })
+
+  it('renders feature cards', () => {
+    render(<Home />)
+    
+    expect(screen.getByText('Next.js 15+')).toBeInTheDocument()
+    expect(screen.getByText('Pronto para Produção')).toBeInTheDocument()
+  })
+})
+`
+  );
+
+  // Teste de exemplo para componentes
+  fs.writeFileSync(
+    "src/__tests__/components.test.tsx",
+    `// 🧪 TESTES DE COMPONENTES
+// ⚠️ ARQUIVO DELETÁVEL - Pode ser removido ao criar seus próprios testes
+
+import { render, screen } from '@testing-library/react'
+import Header from '@/components/layout/header/Header'
+import Footer from '@/components/layout/footer/Footer'
+
+describe('Header Component', () => {
+  it('renders the logo', () => {
+    render(<Header />)
+    
+    const logo = screen.getByText('RNT')
+    expect(logo).toBeInTheDocument()
+  })
+
+  it('renders navigation links', () => {
+    render(<Header />)
+    
+    expect(screen.getByText('Home')).toBeInTheDocument()
+    expect(screen.getByText('Docs')).toBeInTheDocument()
+    expect(screen.getByText('Examples')).toBeInTheDocument()
+    expect(screen.getByText('About')).toBeInTheDocument()
+  })
+})
+
+describe('Footer Component', () => {
+  it('renders copyright text', () => {
+    render(<Footer />)
+    
+    const copyright = screen.getByText(/RNT Projects. Todos os direitos reservados/i)
+    expect(copyright).toBeInTheDocument()
+  })
+
+  it('renders social links', () => {
+    render(<Footer />)
+    
+    const githubLink = screen.getByLabelText('GitHub')
+    const linkedinLink = screen.getByLabelText('LinkedIn')
+    const instagramLink = screen.getByLabelText('Instagram')
+    
+    expect(githubLink).toBeInTheDocument()
+    expect(linkedinLink).toBeInTheDocument()
+    expect(instagramLink).toBeInTheDocument()
+  })
+})
+`
+  );
 }
 
 main().catch(console.error);

@@ -202,6 +202,9 @@ insert_final_newline = true
       "next.config.js",
       `/** @type {import('next').NextConfig} */
 const nextConfig = {
+    images: {
+    formats: ['image/avif', 'image/webp']
+  },
   compiler: {
     styledComponents: true,
   },
@@ -277,22 +280,22 @@ module.exports = createJestConfig(customJestConfig)
     `// 🎨 ARQUIVO DE TEMA - Pode ser personalizado conforme necessário
 // Este arquivo contém as configurações de cores e breakpoints do projeto
 
+export const media = {
+  sm: '@media (max-width: 480px)',
+  md: '@media (max-width: 768px)',
+  lg: '@media (max-width: 1024px)'
+}
+
+export const transitions = {
+  default: 'all 0.3s ease'
+}
+
 export const theme = {
-  breakpoints: {
-    sm: '480px',
-    md: '768px',
-    lg: '1024px',
-    xl: '1200px'
-  },
-  media: {
-    sm: '(max-width: 480px)',
-    md: '(max-width: 768px)',
-    lg: '(max-width: 1024px)',
-    xl: '(max-width: 1200px)'
-  },
   colors: {
     primaryColor: '#011627',
     secondaryColor: '#023864',
+    thirdColor: '#0d6efd',
+    forthColor: '#E25010',
     textColor: '#fff',
     yellow: '#ffff00',
     yellow2: '#E1A32A',
@@ -304,8 +307,10 @@ export const theme = {
     orange2: '#ff7f50',
     black: '#000',
     red: '#FF0000',
+    redHover: '#FF4837',
+    error: '#AB2E46',
     green: '#008000',
-    green2: '#44BD32',
+    green2: '#44BD32'
   }
 }
 

@@ -92,11 +92,11 @@ async function main() {
 
   if (finalChoice === "styled-components") {
     execCommand(
-      "npm install styled-components @types/styled-components react-redux @reduxjs/toolkit framer-motion react-icons immer redux@latest clsx class-variance-authority lucide-react --save"
+      "npm install styled-components @types/styled-components react-redux @reduxjs/toolkit framer-motion react-icons immer imask zod react-hook-form next-safe-layouts @svgr/webpack redux@latest clsx class-variance-authority lucide-react --save"
     );
   } else {
     execCommand(
-      "npm install react-redux @reduxjs/toolkit framer-motion react-icons immer redux@latest clsx class-variance-authority lucide-react --save"
+      "npm install react-redux @reduxjs/toolkit framer-motion react-icons immer imask zod react-hook-form next-safe-layouts @svgr/webpack redux@latest clsx class-variance-authority lucide-react --save"
     );
   }
 

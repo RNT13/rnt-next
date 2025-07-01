@@ -1,6 +1,6 @@
 {
   "name": "rnt-next",
-  "version": "2.2.0",
+  "version": "2.3.0",
   "description": "CLI para criar aplicações Next.js com Styled Components ou Tailwind CSS, Turbopack condicional, dependências de teste opcionais e configurações pré-definidas - Criado por RNT",
   "main": "index.js",
   "scripts": {

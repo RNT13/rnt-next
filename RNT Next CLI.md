@@ -1,30 +1,20 @@
 # RNT Next CLI
 
-CLI para criar aplicações Next.js com configurações pré-definidas e estrutura otimizada. Criado por RNT.
+CLI **interativo** para criar aplicações Next.js com configurações personalizadas. Criado por RNT.
 
 ## 🚀 Características
 
+- ✅ **Interface interativa** com 5 prompts de configuração
 - ✅ Next.js 15+ com App Router
-
 - ✅ TypeScript configurado
-
-- ✅ Escolha entre Styled Components ou Tailwind CSS
-
-- ✅ Turbopack habilitado condicionalmente (apenas para Tailwind CSS)
-
+- ✅ Escolha entre **Styled Components** ou **Tailwind CSS**
+- ✅ **Turbopack opcional** (independente da escolha de CSS)
+- ✅ **Projeto limpo** (--empty) ou **com exemplos**
+- ✅ **Dependências de teste opcionais** (Jest + Testing Library)
+- ✅ **Pacote de dependências adicionais opcional**
 - ✅ Redux Toolkit para gerenciamento de estado
-
 - ✅ ESLint + Prettier configurados
-
-- ✅ Dependências de teste opcionais (Jest + Testing Library)
-
 - ✅ Estrutura de componentes organizada
-
-- ✅ Comentários indicando arquivos deletáveis
-
-- ✅ Configurações de desenvolvimento otimizadas
-
-- ✅ Página inicial personalizada mencionando RNT
 
 ## 📦 Instalação
 
@@ -43,55 +33,71 @@ rnt-next meu-projeto
 
 ## 🛠️ Uso
 
-### Criação básica
+### Criação interativa
 
 ```bash
 npx rnt-next meu-projeto
-cd meu-projeto
-npm run dev
 ```
 
-### Opções disponíveis durante a criação
+O CLI fará **5 perguntas** antes de criar o projeto:
 
-Durante a execução, você será perguntado sobre:
+1. **🎨 CSS**: Styled Components ou Tailwind CSS
+2. **⚡ Turbopack**: Habilitar ou não
+3. **📦 Projeto**: Limpo (--empty) ou com exemplos
+4. **🧪 Testes**: Instalar Jest + Testing Library ou não
+5. **📚 Deps. Adicionais**: Instalar pacote extra ou não
 
-1. **Biblioteca de CSS**
-  - **Styled Components**: CSS-in-JS com temas personalizáveis (sem Turbopack)
-  - **Tailwind CSS**: Framework CSS utilitário para desenvolvimento rápido (com Turbopack)
+Após confirmar as configurações, o projeto será criado automaticamente.
 
-1. **Dependências de Teste**
-  - **Sim**: Instala Jest, Testing Library e configurações de teste
-  - **Não**: Projeto sem dependências de teste
+## 📋 Configurações Disponíveis
+
+### 1️⃣ Biblioteca de CSS
+
+- **Styled Components**: CSS-in-JS com temas personalizáveis
+- **Tailwind CSS**: Framework CSS utilitário
+
+### 2️⃣ Turbopack
+
+- **Sim**: Habilita Turbopack para desenvolvimento mais rápido
+- **Não**: Usa o bundler padrão do Next.js
+
+### 3️⃣ Tipo de Projeto
+
+- **Limpo (--empty)**: Projeto vazio, apenas estrutura básica
+- **Com exemplos**: Inclui header, footer e página inicial de exemplo
+
+### 4️⃣ Dependências de Teste
+
+- **Sim**: Jest, Testing Library, configurações e testes de exemplo
+- **Não**: Projeto sem dependências de teste
+
+### 5️⃣ Dependências Adicionais
+
+- **Sim**: React Hook Form, Zod, iMask, Next Safe Layouts, @svgr/webpack
+- **Não**: Apenas dependências essenciais
 
 ## 📁 Estrutura do projeto
 
-### Com Styled Components
+### Projeto Limpo (--empty)
 
 ```
 meu-projeto/
 ├── src/
 │   ├── app/
-│   │   ├── layout.tsx
-│   │   └── page.tsx (⚠️ deletável)
+│   │   ├── layout.tsx (básico)
+│   │   ├── page.tsx (página vazia do Next.js)
+│   │   └── globals.css (apenas se Tailwind)
 │   ├── components/
-│   │   ├── layout/
-│   │   │   ├── header/
-│   │   │   │   ├── Header.tsx (⚠️ deletável)
-│   │   │   │   └── HeaderStyles.ts (⚠️ deletável)
-│   │   │   └── footer/
-│   │   │       ├── Footer.tsx (⚠️ deletável)
-│   │   │       └── FooterStyles.ts (⚠️ deletável)
 │   │   ├── ui/
 │   │   └── providers.tsx
-│   ├── lib/
-│   │   └── styled-components-registry.tsx (obrigatório)
+│   ├── lib/ (se Styled Components)
+│   │   └── styled-components-registry.tsx
 │   ├── redux/
 │   │   ├── store.ts
 │   │   └── slices/
 │   ├── styles/
-│   │   ├── globalStyles.tsx
-│   │   ├── theme.ts
-│   │   └── HomeStyles.ts (⚠️ deletável)
+│   │   ├── globalStyles.tsx (se Styled Components)
+│   │   └── theme.ts
 │   ├── hooks/
 │   ├── utils/
 │   └── types/
@@ -99,20 +105,20 @@ meu-projeto/
 ├── public/
 ├── next.config.js
 ├── jest.config.js (se testes habilitados)
-├── jest.setup.js (se testes habilitados)
+├── tailwind.config.js (se Tailwind)
 ├── tsconfig.json
 └── package.json
 ```
 
-### Com Tailwind CSS
+### Projeto com Exemplos
 
 ```
 meu-projeto/
 ├── src/
 │   ├── app/
-│   │   ├── layout.tsx
-│   │   ├── page.tsx (⚠️ deletável)
-│   │   └── globals.css
+│   │   ├── layout.tsx (com header/footer)
+│   │   ├── page.tsx (página de exemplo)
+│   │   └── globals.css (apenas se Tailwind)
 │   ├── components/
 │   │   ├── layout/
 │   │   │   ├── header/
@@ -121,136 +127,117 @@ meu-projeto/
 │   │   │       └── Footer.tsx (⚠️ deletável)
 │   │   ├── ui/
 │   │   └── providers.tsx
+│   ├── lib/ (se Styled Components)
+│   │   └── styled-components-registry.tsx
 │   ├── redux/
 │   │   ├── store.ts
 │   │   └── slices/
 │   ├── styles/
+│   │   ├── globalStyles.tsx (se Styled Components)
 │   │   └── theme.ts
 │   ├── hooks/
 │   ├── utils/
 │   └── types/
 ├── __tests__/ (se testes habilitados)
+│   └── page.test.tsx (⚠️ deletável)
 ├── public/
 ├── next.config.js
-├── tailwind.config.js
 ├── jest.config.js (se testes habilitados)
-├── jest.setup.js (se testes habilitados)
+├── tailwind.config.js (se Tailwind)
 ├── tsconfig.json
-└ package.json
+└── package.json
 ```
 
 ## 🎨 Tecnologias incluídas
 
-### Core
+### Core (Sempre incluído)
 
 - **Next.js 15+** - Framework React com App Router
-
 - **TypeScript** - Tipagem estática
-
-- **ESLint** - Linting configurado por padrão
+- **ESLint** - Linting configurado
+- **Redux Toolkit** - Gerenciamento de estado
+- **Framer Motion** - Animações
+- **React Icons** - Ícones
 
 ### Styling (Escolha durante instalação)
 
-- **Styled Components** - CSS-in-JS com temas e SSR (sem Turbopack)
+- **Styled Components** - CSS-in-JS com temas e SSR
+- **Tailwind CSS** - Framework CSS utilitário
 
-- **Tailwind CSS** - Framework CSS utilitário (com Turbopack)
+### Performance (Opcional)
 
-### Outras bibliotecas
-
-- **Framer Motion** - Animações
-
-- **React Icons** - Ícones
-
-- **Redux Toolkit** - Gerenciamento de estado
-
-- **React Redux** - Conectores React
-
-### Desenvolvimento
-
-- **Prettier** - Formatação de código
-
-- **VS Code Settings** - Configurações do editor
+- **Turbopack** - Bundler mais rápido (opcional)
 
 ### Testes (Opcional)
 
 - **Jest** - Framework de testes
+- **Testing Library** - Utilitários para testes React
+- **Jest Environment JSDOM** - Ambiente de testes DOM
 
-- **Testing Library** - Utilitários para testes de componentes React
+### Dependências Adicionais (Opcional)
 
-- **Jest Environment JSDOM** - Ambiente de testes para DOM
+- **React Hook Form** - Formulários performáticos
+- **Zod** - Validação de esquemas TypeScript
+- **iMask** - Máscaras de input
+- **Next Safe Layouts** - Layouts seguros
+- **@svgr/webpack** - Importação de SVGs como componentes
+
+### Desenvolvimento
+
+- **Prettier** - Formatação de código
+- **VS Code Settings** - Configurações do editor
 
 ## ⚙️ Configurações incluídas
 
 ### Next.js
 
 - App Router habilitado
-
-- Turbopack configurado condicionalmente (apenas para Tailwind CSS)
-
+- Turbopack configurado condicionalmente
 - Suporte a Styled Components (se escolhido)
-
 - Configurações de imagem otimizadas
+- Flag `--empty` (se projeto limpo escolhido)
 
 ### ESLint + Prettier
 
 - Configuração otimizada para Next.js
-
 - Regras para TypeScript e React
-
 - Formatação automática no save
 
 ### VS Code
 
 - Configurações de workspace
-
 - Formatação automática
-
 - Extensões recomendadas
 
 ### Styled Components (se escolhido)
 
 - Configuração para SSR
-
 - Registry para Next.js 15+
-
 - GlobalStyles.tsx configurado
-
 - Temas claro/escuro
-
-- Componentes com arquivos de estilos separados
 
 ### Tailwind CSS (se escolhido)
 
-- Configuração completa com Turbopack
-
+- Configuração completa
 - Classes utilitárias personalizadas
-
 - Suporte a dark mode
-
-- Componentes pré-estilizados
 
 ### Redux
 
 - Store configurada
-
 - Middleware padrão
-
 - Tipagem TypeScript
 
 ### Jest (se escolhido)
 
 - Configuração para Next.js
-
 - Setup para Testing Library
-
 - Testes de exemplo incluídos
-
-- Suporte a módulos TypeScript
 
 ## 🚀 Scripts disponíveis
 
 ```bash
-npm run dev      # Servidor de desenvolvimento (com Turbopack se Tailwind)
+npm run dev      # Servidor de desenvolvimento (com Turbopack se habilitado)
 npm run build    # Build de produção
 npm run start    # Servidor de produção
 npm run lint     # Executar ESLint
@@ -261,21 +248,14 @@ npm run test:watch # Executar testes em modo watch (se instalados)
 
 ## 📝 Personalização
 
-### Arquivos Deletáveis
+### Arquivos Deletáveis (apenas em projetos com exemplos)
 
-Os arquivos marcados com comentários `⚠️ ARQUIVO DELETÁVEL` podem ser removidos ao criar sua própria página:
+Os arquivos marcados com `⚠️ ARQUIVO DELETÁVEL` podem ser removidos:
 
 - `src/app/page.tsx` - Página inicial de exemplo
-
 - `src/components/layout/header/Header.tsx` - Header de exemplo
-
 - `src/components/layout/footer/Footer.tsx` - Footer de exemplo
-
-- `src/styles/HomeStyles.ts` - Estilos da página inicial (Styled Components)
-
 - `__tests__/page.test.tsx` - Testes de exemplo
-
-- Seções marcadas no `globals.css` (Tailwind CSS)
 
 ### Temas
 
@@ -286,11 +266,7 @@ Edite `src/styles/theme.ts` para personalizar cores e breakpoints.
 Se você escolheu Styled Components:
 
 - Edite `src/styles/globalStyles.tsx` para estilos globais
-
 - Use os temas em `src/styles/theme.ts`
-
-- Componentes estilizados estão em arquivos separados (ex: `HeaderStyles.ts`)
-
 - O arquivo `styled-components-registry.tsx` é **obrigatório** para SSR
 
 ### Tailwind CSS
@@ -298,20 +274,14 @@ Se você escolheu Styled Components:
 Se você escolheu Tailwind CSS:
 
 - Edite `src/app/globals.css` para estilos globais
-
 - Use `tailwind.config.js` para personalizar o tema
-
-- Classes utilitárias personalizadas estão disponíveis
-
-- Turbopack está habilitado para desenvolvimento mais rápido
 
 ### Componentes
 
 A estrutura de componentes está organizada em:
 
-- `components/layout/` - Componentes de layout (Header, Footer)
-
 - `components/ui/` - Componentes de interface reutilizáveis
+- `components/layout/` - Componentes de layout (se projeto com exemplos)
 
 ### Redux
 
@@ -322,38 +292,58 @@ Adicione seus slices em `src/redux/slices/` e importe no store.
 Se você escolheu instalar dependências de teste:
 
 - Adicione seus testes em `__tests__/` ou `src/__tests__/`
-
 - Use os exemplos fornecidos como base
 
-- Configure novos testes seguindo o padrão do Jest + Testing Library
+## 🆕 Novidades da versão 4.0
 
-## 🆕 Novidades da versão 2.1
+- ✅ **Interface totalmente interativa** com 5 prompts
+- ✅ **Turbopack opcional** (independente da escolha de CSS)
+- ✅ **Confirmação das configurações** antes da criação
+- ✅ **Resumo visual** das escolhas feitas
+- ✅ **Dependências adicionais opcionais**
+- ✅ **Projeto limpo ou com exemplos** (escolha do usuário)
+- ✅ **Configuração flexível** para diferentes necessidades
+- ✅ **Melhor experiência do usuário** com feedback visual
 
-- ✅ Instalação condicional do Turbopack (apenas para Tailwind CSS)
+## 🎯 Casos de Uso
 
-- ✅ Comentários indicando arquivos deletáveis para facilitar customização
+### Projeto de Produção Limpo
 
-- ✅ Prompt para instalação opcional de dependências de teste
+```
+CSS: Tailwind CSS
+Turbopack: Sim
+Projeto: Limpo (--empty)
+Testes: Não
+Deps. Adicionais: Sim
+```
 
-- ✅ Configuração completa do Jest + Testing Library
+### Projeto de Aprendizado com Exemplos
 
-- ✅ Testes de exemplo incluídos
+```
+CSS: Styled Components
+Turbopack: Não
+Projeto: Com exemplos
+Testes: Sim
+Deps. Adicionais: Não
+```
 
-- ✅ Estrutura otimizada para ambas as opções de CSS
+### Projeto Rápido para Prototipagem
 
-- ✅ Melhor documentação e organização de código
+```
+CSS: Tailwind CSS
+Turbopack: Sim
+Projeto: Com exemplos
+Testes: Não
+Deps. Adicionais: Sim
+```
 
 ## 🤝 Contribuição
 
 1. Fork o projeto
-
-1. Crie uma branch para sua feature
-
-1. Commit suas mudanças
-
-1. Push para a branch
-
-1. Abra um Pull Request
+2. Crie uma branch para sua feature
+3. Commit suas mudanças
+4. Push para a branch
+5. Abra um Pull Request
 
 ## 📄 Licença
 
@@ -364,22 +354,17 @@ ISC License
 Para problemas ou dúvidas:
 
 1. Verifique se todas as dependências estão instaladas
-
-1. Certifique-se de estar usando Node.js 18+
-
-1. Execute `npm run lint` para verificar problemas de código
-
-1. Se testes estão habilitados, execute `npm test` para verificar funcionamento
+2. Certifique-se de estar usando Node.js 18+
+3. Execute `npm run lint` para verificar problemas de código
+4. Se testes estão habilitados, execute `npm test` para verificar funcionamento
 
 ## 👤 Autor
 
 Criado com 💙 por **RNT**
 
 - GitHub: [RNT13](https://github.com/RNT13)
-
 - LinkedIn: [Renato Luiz](https://www.linkedin.com/in/renato-luiz-0b072b247/)
 
 ---
 
-**RNT Next CLI** - Acelere seu desenvolvimento com Next.js!
-
+**RNT Next CLI v3.0** - Configure seu projeto Next.js do seu jeito!

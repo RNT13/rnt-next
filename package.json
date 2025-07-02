@@ -1,7 +1,7 @@
 {
   "name": "rnt-next",
-  "version": "2.3.0",
-  "description": "CLI para criar aplicações Next.js com Styled Components ou Tailwind CSS, Turbopack condicional, dependências de teste opcionais e configurações pré-definidas - Criado por RNT",
+  "version": "3.0.0",
+  "description": "CLI para criar aplicações Next.js com configuração completa: Styled Components/Tailwind, Turbopack opcional, projeto limpo/exemplos, testes opcionais e dependências adicionais - Criado por RNT",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
@@ -17,6 +17,8 @@
     "turbopack",
     "jest",
     "testing",
+    "empty",
+    "interactive",
     "rnt"
   ],
   "author": "RNT <rnt@example.com>",

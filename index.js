@@ -35,49 +35,90 @@ function askQuestion(query) {
 async function main() {
   console.log("🎨 RNT Next CLI - Criado por RNT");
   console.log("=====================================");
+  console.log("📝 Configuração do Projeto");
+  console.log("");
 
-  // Pergunta sobre a escolha do CSS
+  // 1. Pergunta sobre a escolha do CSS
   const cssChoice = await askQuestion(
-    "Qual biblioteca de CSS você deseja usar?\n1. Styled Components (sem Turbopack)\n2. Tailwind CSS (com Turbopack)\nEscolha (1 ou 2): "
+    "1️⃣ Qual biblioteca de CSS você deseja usar?\n   1. Styled Components\n   2. Tailwind CSS\n   Escolha (1 ou 2): "
   );
 
-  const useStyledComponents = cssChoice === "1";
-  const useTailwind = cssChoice === "2";
+  // 2. Pergunta sobre Turbopack
+  const turboChoice = await askQuestion(
+    "\n2️⃣ Deseja habilitar o Turbopack?\n   1. Sim\n   2. Não\n   Escolha (1 ou 2): "
+  );
 
-  if (!useStyledComponents && !useTailwind) {
-    console.log("❌ Escolha inválida. Usando Tailwind CSS por padrão.");
-  }
+  // 3. Pergunta sobre projeto limpo
+  const emptyChoice = await askQuestion(
+    "\n3️⃣ Deseja criar um projeto limpo (--empty)?\n   1. Sim (projeto vazio)\n   2. Não (com exemplos)\n   Escolha (1 ou 2): "
+  );
+
+  // 4. Pergunta sobre dependências de teste
+  const testChoice = await askQuestion(
+    "\n4️⃣ Deseja instalar dependências de teste?\n   1. Sim (Jest + Testing Library)\n   2. Não\n   Escolha (1 ou 2): "
+  );
+
+  // 5. Pergunta sobre dependências adicionais
+  const extraDepsChoice = await askQuestion(
+    "\n5️⃣ Deseja instalar pacote de dependências adicionais?\n   1. Sim (React Hook Form, Zod, iMask, etc.)\n   2. Não (apenas essenciais)\n   Escolha (1 ou 2): "
+  );
+
+  // Processando escolhas
+  const useStyledComponents = cssChoice === "1";
+  const useTailwind = cssChoice === "2" || !useStyledComponents;
+  const useTurbo = turboChoice === "1";
+  const useEmpty = emptyChoice === "1";
+  const installTests = testChoice === "1";
+  const installExtraDeps = extraDepsChoice === "1";
 
   const finalChoice = useStyledComponents ? "styled-components" : "tailwind";
 
-  // Pergunta sobre dependências de teste
-  const testChoice = await askQuestion(
-    "Deseja instalar dependências de teste (Jest, Testing Library)?\n1. Sim\n2. Não\nEscolha (1 ou 2): "
-  );
-
-  const installTests = testChoice === "1";
-
+  console.log("\n" + "=".repeat(50));
+  console.log("📋 RESUMO DAS CONFIGURAÇÕES");
+  console.log("=".repeat(50));
   console.log(
-    `✅ Configurando projeto com ${
+    `🎨 CSS: ${
       finalChoice === "styled-components" ? "Styled Components" : "Tailwind CSS"
     }`
   );
-  console.log(`📦 Dependências de teste: ${installTests ? "Sim" : "Não"}`);
+  console.log(`⚡ Turbopack: ${useTurbo ? "Sim" : "Não"}`);
+  console.log(`📦 Projeto: ${useEmpty ? "Limpo (--empty)" : "Com exemplos"}`);
+  console.log(`🧪 Testes: ${installTests ? "Sim" : "Não"}`);
+  console.log(`📚 Deps. Adicionais: ${installExtraDeps ? "Sim" : "Não"}`);
+  console.log("=".repeat(50));
+
+  const confirmChoice = await askQuestion(
+    "\n✅ Confirma as configurações acima? (1=Sim, 2=Não): "
+  );
+
+  if (confirmChoice !== "1") {
+    console.log("❌ Operação cancelada pelo usuário.");
+    process.exit(0);
+  }
+
+  console.log("\n🚀 Iniciando criação do projeto...");
 
   // 🚀 Criando um novo projeto com Next.js e TypeScript
-  console.log("📦 Criando novo projeto com Next.js...");
+  console.log("📦 Criando projeto com Next.js...");
 
-  if (finalChoice === "styled-components") {
-    // Criar projeto sem Tailwind e sem Turbopack para Styled Components
-    execCommand(
-      `npx --yes create-next-app@latest ${appName} --typescript --no-tailwind --eslint --app --src-dir --import-alias "@/*"`
-    );
+  let createCommand = `npx --yes create-next-app@latest ${appName} --typescript --eslint --app --src-dir --import-alias "@/*"`;
+
+  // Adicionar flags baseadas nas escolhas
+  if (useTailwind) {
+    createCommand += " --tailwind";
   } else {
-    // Criar projeto com Tailwind e Turbopack
-    execCommand(
-      `npx --yes create-next-app@latest ${appName} --typescript --tailwind --eslint --app --src-dir --import-alias "@/*" --turbo`
-    );
+    createCommand += " --no-tailwind";
   }
+
+  if (useTurbo) {
+    createCommand += " --turbo";
+  }
+
+  if (useEmpty) {
+    createCommand += " --empty";
+  }
+
+  execCommand(createCommand);
 
   // Verificar se o diretório foi criado antes de mudar para ele
   if (!fs.existsSync(appPath)) {
@@ -88,19 +129,24 @@ async function main() {
   process.chdir(appPath);
 
   // 🎯 Instalando dependências baseadas na escolha
-  console.log("📦 Instalando Dependências de produção...");
+  console.log("📦 Instalando dependências de produção...");
+
+  let prodDependencies =
+    "react-redux @reduxjs/toolkit framer-motion react-icons immer redux@latest clsx class-variance-authority lucide-react";
 
   if (finalChoice === "styled-components") {
-    execCommand(
-      "npm install styled-components @types/styled-components react-redux @reduxjs/toolkit framer-motion react-icons immer imask zod react-hook-form next-safe-layouts @svgr/webpack redux@latest clsx class-variance-authority lucide-react --save"
-    );
-  } else {
-    execCommand(
-      "npm install react-redux @reduxjs/toolkit framer-motion react-icons immer imask zod react-hook-form next-safe-layouts @svgr/webpack redux@latest clsx class-variance-authority lucide-react --save"
-    );
+    prodDependencies =
+      "styled-components @types/styled-components " + prodDependencies;
   }
 
-  console.log("📦 Instalando Dependências de desenvolvimento...");
+  if (installExtraDeps) {
+    prodDependencies +=
+      " imask zod react-hook-form next-safe-layouts @svgr/webpack";
+  }
+
+  execCommand(`npm install ${prodDependencies} --save`);
+
+  console.log("📦 Instalando dependências de desenvolvimento...");
 
   let devDependencies =
     "eslint-plugin-prettier prettier eslint-config-prettier";
@@ -121,9 +167,6 @@ async function main() {
   const folders = [
     "src/styles",
     "src/components/ui",
-    "src/components/layout",
-    "src/components/layout/header",
-    "src/components/layout/footer",
     "src/lib",
     "src/hooks",
     "src/utils",
@@ -132,6 +175,14 @@ async function main() {
     "src/types",
     ".vscode",
   ];
+
+  if (!useEmpty) {
+    folders.push(
+      "src/components/layout",
+      "src/components/layout/header",
+      "src/components/layout/footer"
+    );
+  }
 
   if (installTests) {
     folders.push("__tests__", "src/__tests__");
@@ -197,30 +248,11 @@ insert_final_newline = true
   );
 
   // Next.js config
-  if (finalChoice === "styled-components") {
-    fs.writeFileSync(
-      "next.config.js",
-      `/** @type {import('next').NextConfig} */
-const nextConfig = {
-    images: {
-    formats: ['image/avif', 'image/webp']
-  },
-  compiler: {
-    styledComponents: true,
-  },
-  images: {
-    domains: ['placehold.co'],
-  },
-}
+  let nextConfig = `/** @type {import('next').NextConfig} */
+const nextConfig = {`;
 
-module.exports = nextConfig
-`
-    );
-  } else {
-    fs.writeFileSync(
-      "next.config.js",
-      `/** @type {import('next').NextConfig} */
-const nextConfig = {
+  if (useTurbo) {
+    nextConfig += `
   experimental: {
     turbo: {
       rules: {
@@ -230,16 +262,27 @@ const nextConfig = {
         },
       },
     },
-  },
+  },`;
+  }
+
+  if (finalChoice === "styled-components") {
+    nextConfig += `
+  compiler: {
+    styledComponents: true,
+  },`;
+  }
+
+  nextConfig += `
   images: {
+    formats: ['image/avif', 'image/webp'],
     domains: ['placehold.co'],
   },
 }
 
 module.exports = nextConfig
-`
-    );
-  }
+`;
+
+  fs.writeFileSync("next.config.js", nextConfig);
 
   // Jest config se testes foram escolhidos
   if (installTests) {
@@ -277,8 +320,7 @@ module.exports = createJestConfig(customJestConfig)
   // Theme configuration
   fs.writeFileSync(
     "src/styles/theme.ts",
-    `// 🎨 ARQUIVO DE TEMA - Pode ser personalizado conforme necessário
-// Este arquivo contém as configurações de cores e breakpoints do projeto
+    `// 🎨 ARQUIVO DE TEMA - Configurações de cores e breakpoints do projeto
 
 export const media = {
   sm: '@media (max-width: 480px)',
@@ -377,9 +419,9 @@ export const themeConfig = {
 
   // Criar arquivos específicos baseados na escolha
   if (finalChoice === "styled-components") {
-    await createStyledComponentsFiles(installTests);
+    await createStyledComponentsFiles();
   } else {
-    await createTailwindFiles(installTests);
+    await createTailwindFiles();
   }
 
   // Providers
@@ -388,7 +430,6 @@ export const themeConfig = {
     `'use client'
 
 // 🔧 PROVIDERS - Configuração de contextos globais
-// Este arquivo pode ser expandido com novos providers conforme necessário
 
 import { Provider } from 'react-redux'
 import { store } from '@/redux/store'
@@ -440,42 +481,43 @@ export type AppDispatch = AppStore['dispatch']
 export type RootReducer = typeof rootReducer`
   );
 
-  // Criar página inicial personalizada
-  await createCustomHomePage(finalChoice, installTests);
+  // Criar layout baseado na escolha
+  await createLayout(finalChoice, useEmpty);
 
-  // Criar layout personalizado
-  await createCustomLayout(finalChoice);
-
-  // Criar testes de exemplo se solicitado
-  if (installTests) {
-    await createExampleTests(finalChoice);
+  // Criar arquivos de exemplo se não for projeto vazio
+  if (!useEmpty) {
+    await createExampleFiles(finalChoice, installTests);
   }
 
-  console.log("✅ Projeto criado com sucesso!");
+  console.log("\n" + "=".repeat(50));
+  console.log("✅ PROJETO CRIADO COM SUCESSO!");
+  console.log("=".repeat(50));
   console.log(`📁 Navegue para: cd ${appName}`);
   console.log("🚀 Execute: npm run dev");
   console.log(
-    `🎨 Configurado com: ${
+    `🎨 CSS: ${
       finalChoice === "styled-components" ? "Styled Components" : "Tailwind CSS"
     }`
   );
-  if (finalChoice === "tailwind") {
-    console.log("⚡ Turbopack habilitado para desenvolvimento mais rápido");
-  }
+  console.log(`⚡ Turbopack: ${useTurbo ? "Habilitado" : "Desabilitado"}`);
+  console.log(`📦 Tipo: ${useEmpty ? "Projeto limpo" : "Com exemplos"}`);
   if (installTests) {
-    console.log("🧪 Dependências de teste instaladas - Execute: npm test");
+    console.log("🧪 Testes: npm test");
+  }
+  if (installExtraDeps) {
+    console.log("📚 Dependências adicionais instaladas");
   }
   console.log("💙 Criado por RNT");
+  console.log("=".repeat(50));
 }
 
-async function createStyledComponentsFiles(installTests) {
+async function createStyledComponentsFiles() {
   // Global Styles para Styled Components
   fs.writeFileSync(
     "src/styles/globalStyles.tsx",
     `'use client'
 
 // 🎨 GLOBAL STYLES - Estilos globais com Styled Components
-// Este arquivo pode ser personalizado conforme suas necessidades de design
 
 import { createGlobalStyle } from 'styled-components';
 import { theme } from './theme';
@@ -525,7 +567,6 @@ export const GlobalStyles = createGlobalStyle\`
     `'use client'
 
 // 🔧 STYLED COMPONENTS REGISTRY - Necessário para SSR
-// Este arquivo é obrigatório para o funcionamento correto do Styled Components com Next.js
 
 import React, { useState } from 'react'
 import { useServerInsertedHTML } from 'next/navigation'
@@ -555,34 +596,171 @@ export default function StyledComponentsRegistry({
   )
 }`
   );
+}
 
-  // Home Styles para Styled Components
-  fs.writeFileSync(
-    "src/styles/HomeStyles.ts",
-    `'use client'
+async function createTailwindFiles() {
+  // Verificar se o globals.css já existe e atualizar
+  const globalsPath = "src/app/globals.css";
 
-// 🏠 HOME STYLES - Estilos da página inicial
+  if (fs.existsSync(globalsPath)) {
+    // Ler o conteúdo existente e adicionar customizações
+    let existingContent = fs.readFileSync(globalsPath, "utf8");
+
+    // Adicionar customizações se não existirem
+    if (!existingContent.includes("/* RNT Custom Styles */")) {
+      const customStyles = `
+
+/* RNT Custom Styles */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  list-style: none;
+}
+
+body {
+  font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background-color: #011627;
+  color: #fff;
+  transition: background-color 0.3s, color 0.3s;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+`;
+
+      fs.writeFileSync(globalsPath, existingContent + customStyles);
+    }
+  }
+}
+
+async function createLayout(cssChoice, useEmpty) {
+  if (cssChoice === "styled-components") {
+    // Layout com Styled Components
+    fs.writeFileSync(
+      "src/app/layout.tsx",
+      `import type { Metadata } from 'next'
+import { Inter } from 'next/font/google'
+import StyledComponentsRegistry from '@/lib/styled-components-registry'
+import { GlobalStyles } from '@/styles/globalStyles'
+import { Providers } from '@/components/providers'${
+        !useEmpty
+          ? `
+import Header from '@/components/layout/header/Header'
+import Footer from '@/components/layout/footer/Footer'`
+          : ""
+      }
+
+const inter = Inter({ subsets: ['latin'] })
+
+export const metadata: Metadata = {
+  title: 'RNT Next App',
+  description: 'Aplicação Next.js criada com RNT CLI',
+}
+
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode
+}) {
+  return (
+    <html lang="pt-BR">
+      <body className={inter.className}>
+        <StyledComponentsRegistry>
+          <GlobalStyles />
+          <Providers>${
+            !useEmpty
+              ? `
+            <Header />
+            {children}
+            <Footer />`
+              : `
+            {children}`
+          }
+          </Providers>
+        </StyledComponentsRegistry>
+      </body>
+    </html>
+  )
+}
+`
+    );
+  } else {
+    // Layout com Tailwind
+    fs.writeFileSync(
+      "src/app/layout.tsx",
+      `import type { Metadata } from 'next'
+import { Inter } from 'next/font/google'
+import './globals.css'
+import { Providers } from '@/components/providers'${
+        !useEmpty
+          ? `
+import Header from '@/components/layout/header/Header'
+import Footer from '@/components/layout/footer/Footer'`
+          : ""
+      }
+
+const inter = Inter({ subsets: ['latin'] })
+
+export const metadata: Metadata = {
+  title: 'RNT Next App',
+  description: 'Aplicação Next.js criada com RNT CLI',
+}
+
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode
+}) {
+  return (
+    <html lang="pt-BR">
+      <body className={inter.className}>
+        <Providers>${
+          !useEmpty
+            ? `
+          <Header />
+          {children}
+          <Footer />`
+            : `
+          {children}`
+        }
+        </Providers>
+      </body>
+    </html>
+  )
+}
+`
+    );
+  }
+}
+
+async function createExampleFiles(cssChoice, installTests) {
+  // Criar página inicial de exemplo
+  if (cssChoice === "styled-components") {
+    fs.writeFileSync(
+      "src/app/page.tsx",
+      `'use client'
+
+// 🏠 PÁGINA INICIAL - Exemplo com Styled Components
 // ⚠️ ARQUIVO DELETÁVEL - Pode ser removido ao criar sua própria página
 
+import { FaReact, FaCode, FaRocket } from 'react-icons/fa'
 import styled from 'styled-components'
-import { theme } from './theme'
+import { theme } from '@/styles/theme'
 
-export const MainContainer = styled.div\`
+const MainContainer = styled.div\`
   min-height: 100vh;
   display: flex;
   flex-direction: column;
   background-color: \${theme.colors.primaryColor};
-\`
-
-export const ContentSection = styled.main\`
-  flex: 1;
   padding: 60px 20px;
   max-width: 1200px;
   margin: 0 auto;
   width: 100%;
 \`
 
-export const HeroSection = styled.section\`
+const HeroSection = styled.section\`
   text-align: center;
   margin-bottom: 80px;
 
@@ -604,508 +782,17 @@ export const HeroSection = styled.section\`
     margin: 0 auto;
     line-height: 1.6;
   }
-
-  @media (max-width: \${theme.breakpoints.md}) {
-    margin-bottom: 60px;
-    
-    h1 {
-      font-size: 2.5rem;
-    }
-    
-    p {
-      font-size: 1.1rem;
-    }
-  }
-
-  @media (max-width: \${theme.breakpoints.sm}) {
-    h1 {
-      font-size: 2rem;
-    }
-    
-    p {
-      font-size: 1rem;
-    }
-  }
 \`
-
-export const FeatureGrid = styled.div\`
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: 30px;
-  margin-top: 40px;
-
-  @media (max-width: \${theme.breakpoints.md}) {
-    grid-template-columns: 1fr;
-    gap: 20px;
-  }
-\`
-
-export const FeatureCard = styled.div\`
-  background: rgba(255, 255, 255, 0.05);
-  padding: 40px 30px;
-  border-radius: 12px;
-  text-align: center;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(10px);
-  transition: all 0.3s ease;
-
-  &:hover {
-    transform: translateY(-5px);
-    background: rgba(255, 255, 255, 0.08);
-    border-color: \${theme.colors.blue2};
-  }
-
-  .icon {
-    font-size: 3rem;
-    color: \${theme.colors.blue2};
-    margin-bottom: 20px;
-  }
-
-  h3 {
-    font-size: 1.5rem;
-    color: \${theme.colors.textColor};
-    margin-bottom: 15px;
-  }
-
-  p {
-    color: \${theme.colors.gray2};
-    line-height: 1.6;
-  }
-
-  @media (max-width: \${theme.breakpoints.md}) {
-    padding: 30px 20px;
-    
-    .icon {
-      font-size: 2.5rem;
-    }
-    
-    h3 {
-      font-size: 1.3rem;
-    }
-  }
-\`
-
-export const CTASection = styled.section\`
-  text-align: center;
-  margin-top: 80px;
-  padding: 60px 20px;
-  background: linear-gradient(135deg, rgba(30, 144, 255, 0.1), rgba(225, 163, 42, 0.1));
-  border-radius: 20px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-
-  h2 {
-    font-size: 2.5rem;
-    color: \${theme.colors.textColor};
-    margin-bottom: 20px;
-  }
-
-  p {
-    font-size: 1.1rem;
-    color: \${theme.colors.gray2};
-    margin-bottom: 30px;
-    max-width: 500px;
-    margin-left: auto;
-    margin-right: auto;
-  }
-
-  @media (max-width: \${theme.breakpoints.md}) {
-    margin-top: 60px;
-    padding: 40px 20px;
-    
-    h2 {
-      font-size: 2rem;
-    }
-    
-    p {
-      font-size: 1rem;
-    }
-  }
-\`
-
-export const Button = styled.button\`
-  background: linear-gradient(135deg, \${theme.colors.blue2}, \${theme.colors.yellow2});
-  color: white;
-  padding: 15px 30px;
-  border: none;
-  border-radius: 8px;
-  font-size: 1.1rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-
-  &:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 10px 25px rgba(30, 144, 255, 0.3);
-  }
-
-  &:active {
-    transform: translateY(0);
-  }
-
-  @media (max-width: \${theme.breakpoints.md}) {
-    padding: 12px 25px;
-    font-size: 1rem;
-  }
-\`
-`
-  );
-
-  // Header Styles para Styled Components
-  fs.writeFileSync(
-    "src/components/layout/header/HeaderStyles.ts",
-    `'use client'
-
-// 🧭 HEADER STYLES - Estilos do cabeçalho
-// ⚠️ ARQUIVO DELETÁVEL - Pode ser removido ao criar seu próprio header
-
-import styled from 'styled-components'
-import { theme } from '@/styles/theme'
-
-export const HeaderContainer = styled.header\`
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 20px;
-  background-color: \${theme.colors.primaryColor};
-  border-bottom: 1px solid \${theme.colors.secondaryColor};
-  position: sticky;
-  top: 0;
-  z-index: 100;
-  
-  @media (max-width: \${theme.breakpoints.md}) {
-    flex-direction: column;
-    gap: 15px;
-  }
-\`
-
-export const Logo = styled.div\`
-  display: flex;
-  align-items: center;
-  
-  h1 {
-    color: \${theme.colors.textColor};
-    font-size: 1.8rem;
-    font-weight: 700;
-    background: linear-gradient(135deg, \${theme.colors.blue2}, \${theme.colors.yellow2});
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-  }
-\`
-
-export const NavMenu = styled.nav\`
-  display: flex;
-  gap: 30px;
-  
-  @media (max-width: \${theme.breakpoints.md}) {
-    gap: 20px;
-    flex-wrap: wrap;
-    justify-content: center;
-  }
-\`
-
-export const NavItem = styled.div\`
-  a {
-    text-decoration: none;
-    color: \${theme.colors.textColor};
-    font-weight: 500;
-    font-size: 16px;
-    transition: color 0.3s ease;
-    position: relative;
-
-    &:hover {
-      color: \${theme.colors.blue2};
-    }
-
-    &::after {
-      content: '';
-      position: absolute;
-      width: 0;
-      height: 2px;
-      bottom: -5px;
-      left: 0;
-      background-color: \${theme.colors.blue2};
-      transition: width 0.3s ease;
-    }
-
-    &:hover::after {
-      width: 100%;
-    }
-  }
-\`
-`
-  );
-
-  // Footer Styles para Styled Components
-  fs.writeFileSync(
-    "src/components/layout/footer/FooterStyles.ts",
-    `'use client'
-
-// 🦶 FOOTER STYLES - Estilos do rodapé
-// ⚠️ ARQUIVO DELETÁVEL - Pode ser removido ao criar seu próprio footer
-
-import styled from 'styled-components'
-import { theme } from '@/styles/theme'
-
-export const FooterContainer = styled.footer\`
-  background-color: \${theme.colors.primaryColor};
-  border-top: 1px solid \${theme.colors.secondaryColor};
-  padding: 40px 20px 20px;
-  margin-top: auto;
-\`
-
-export const FooterContent = styled.div\`
-  max-width: 1200px;
-  margin: 0 auto;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 20px;
-  text-align: center;
-
-  p {
-    color: \${theme.colors.textColor};
-    font-size: 14px;
-    opacity: 0.8;
-  }
-
-  @media (max-width: \${theme.breakpoints.md}) {
-    gap: 15px;
-    
-    p {
-      font-size: 12px;
-    }
-  }
-\`
-
-export const SocialLinks = styled.div\`
-  display: flex;
-  gap: 20px;
-  align-items: center;
-
-  a {
-    color: \${theme.colors.textColor};
-    transition: all 0.3s ease;
-    padding: 8px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-
-    &:hover {
-      color: \${theme.colors.blue2};
-      background-color: rgba(30, 144, 255, 0.1);
-      transform: translateY(-2px);
-    }
-  }
-
-  @media (max-width: \${theme.breakpoints.md}) {
-    gap: 15px;
-    
-    a {
-      padding: 6px;
-      
-      svg {
-        width: 20px;
-        height: 20px;
-      }
-    }
-  }
-\`
-`
-  );
-}
-
-async function createTailwindFiles(installTests) {
-  // Global styles para Tailwind
-  fs.writeFileSync(
-    "src/app/globals.css",
-    `/* 🎨 GLOBAL STYLES - Estilos globais com Tailwind CSS */
-/* Este arquivo pode ser personalizado conforme suas necessidades de design */
-
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-  list-style: none;
-}
-
-body {
-  font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  background-color: #011627;
-  color: #fff;
-  transition: background-color 0.3s, color 0.3s;
-}
-
-html {
-  scroll-behavior: smooth;
-}
-
-@layer base {
-  :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
-    --radius: 0.5rem;
-  }
-
-  .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
-  }
-}
-
-@layer base {
-  * {
-    @apply border-border;
-  }
-  body {
-    @apply bg-background text-foreground;
-  }
-}
-
-/* 🎨 CLASSES UTILITÁRIAS PERSONALIZADAS */
-/* ⚠️ SEÇÃO DELETÁVEL - Pode ser removida ao criar seus próprios estilos */
-
-@layer components {
-  .gradient-text {
-    @apply bg-gradient-to-r from-blue-500 to-yellow-400 bg-clip-text text-transparent;
-  }
-  
-  .feature-card {
-    @apply bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-8 text-center transition-all duration-300 hover:bg-white/8 hover:border-blue-500 hover:-translate-y-1;
-  }
-  
-  .cta-button {
-    @apply bg-gradient-to-r from-blue-500 to-yellow-400 text-white px-8 py-4 rounded-lg font-semibold text-lg uppercase tracking-wide transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-blue-500/30;
-  }
-  
-  .nav-link {
-    @apply text-white font-medium text-base transition-colors duration-300 hover:text-blue-500 relative group;
-  }
-  
-  .nav-link::after {
-    @apply absolute bottom-[-5px] left-0 w-0 h-0.5 bg-blue-500 transition-all duration-300 group-hover:w-full;
-    content: '';
-  }
-}
-`
-  );
-}
-
-async function createCustomHomePage(cssChoice, installTests) {
-  if (cssChoice === "styled-components") {
-    fs.writeFileSync(
-      "src/app/page.tsx",
-      `'use client'
-
-// 🏠 PÁGINA INICIAL - Exemplo com Styled Components
-// ⚠️ ARQUIVO DELETÁVEL - Pode ser removido ao criar sua própria página
-
-import { FaReact, FaCode, FaRocket } from 'react-icons/fa'
-import { 
-  MainContainer, 
-  ContentSection, 
-  HeroSection, 
-  FeatureGrid, 
-  FeatureCard, 
-  CTASection, 
-  Button 
-} from '@/styles/HomeStyles'
 
 export default function Home() {
   return (
     <MainContainer>
-      <ContentSection>
-        <HeroSection>
-          <h1>RNT Next CLI</h1>
-          <p>
-            Um CLI poderoso para criar aplicações Next.js com configurações pré-definidas e estrutura otimizada.
-            Criado por RNT para acelerar o desenvolvimento de projetos modernos.
-          </p>
-        </HeroSection>
-
-        <FeatureGrid>
-          <FeatureCard>
-            <div className="icon">
-              <FaReact />
-            </div>
-            <h3>Next.js 15+</h3>
-            <p>
-              Versão mais recente do Next.js com App Router e todas as funcionalidades modernas.
-            </p>
-          </FeatureCard>
-
-          <FeatureCard>
-            <div className="icon">
-              <FaCode />
-            </div>
-            <h3>Styled Components</h3>
-            <p>
-              CSS-in-JS com Styled Components, temas personalizáveis e componentes reutilizáveis.
-            </p>
-          </FeatureCard>
-
-          <FeatureCard>
-            <div className="icon">
-              <FaRocket />
-            </div>
-            <h3>Pronto para Produção</h3>
-            <p>
-              ESLint, Prettier, TypeScript e Redux Toolkit configurados para máxima produtividade.
-            </p>
-          </FeatureCard>
-        </FeatureGrid>
-
-        <CTASection>
-          <h2>Comece Agora</h2>
-          <p>
-            Execute o comando abaixo e tenha um projeto Next.js completo em segundos.
-          </p>
-          <Button onClick={() => navigator.clipboard.writeText('npx rnt-next meu-projeto')}>
-            Copiar Comando
-          </Button>
-        </CTASection>
-      </ContentSection>
+      <HeroSection>
+        <h1>RNT Next CLI</h1>
+        <p>
+          Projeto criado com RNT Next CLI. Configurado com Styled Components e pronto para desenvolvimento.
+        </p>
+      </HeroSection>
     </MainContainer>
   )
 }
@@ -1122,117 +809,25 @@ export default function Home() {
 import { FaReact, FaCode, FaRocket } from 'react-icons/fa'
 
 export default function Home() {
-  const copyCommand = () => {
-    navigator.clipboard.writeText('npx rnt-next meu-projeto')
-  }
-
   return (
-    <div className="min-h-screen flex flex-col bg-[#011627]">
-      <main className="flex-1 px-5 py-15 max-w-6xl mx-auto w-full">
-        <section className="text-center mb-20">
-          <h1 className="text-5xl md:text-6xl font-bold text-white mb-5 gradient-text">
-            RNT Next CLI
-          </h1>
-          <p className="text-xl text-gray-400 max-w-2xl mx-auto leading-relaxed">
-            Um CLI poderoso para criar aplicações Next.js com configurações pré-definidas e estrutura otimizada.
-            Criado por RNT para acelerar o desenvolvimento de projetos modernos.
-          </p>
-        </section>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-10">
-          <div className="feature-card">
-            <div className="text-5xl text-blue-500 mb-5">
-              <FaReact />
-            </div>
-            <h3 className="text-2xl text-white mb-4">Next.js 15+</h3>
-            <p className="text-gray-400 leading-relaxed">
-              Versão mais recente do Next.js com App Router, Turbopack e todas as funcionalidades modernas.
-            </p>
-          </div>
-
-          <div className="feature-card">
-            <div className="text-5xl text-blue-500 mb-5">
-              <FaCode />
-            </div>
-            <h3 className="text-2xl text-white mb-4">Tailwind CSS</h3>
-            <p className="text-gray-400 leading-relaxed">
-              Framework CSS utilitário para desenvolvimento rápido e responsivo com design moderno.
-            </p>
-          </div>
-
-          <div className="feature-card">
-            <div className="text-5xl text-blue-500 mb-5">
-              <FaRocket />
-            </div>
-            <h3 className="text-2xl text-white mb-4">Pronto para Produção</h3>
-            <p className="text-gray-400 leading-relaxed">
-              ESLint, Prettier, TypeScript e Redux Toolkit configurados para máxima produtividade.
-            </p>
-          </div>
-        </div>
-
-        <section className="text-center mt-20 p-15 bg-gradient-to-r from-blue-500/10 to-yellow-400/10 rounded-2xl border border-white/10">
-          <h2 className="text-4xl text-white mb-5">Comece Agora</h2>
-          <p className="text-xl text-gray-400 mb-8 max-w-lg mx-auto">
-            Execute o comando abaixo e tenha um projeto Next.js completo em segundos.
-          </p>
-          <button onClick={copyCommand} className="cta-button">
-            Copiar Comando
-          </button>
-        </section>
-      </main>
+    <div className="min-h-screen flex flex-col bg-[#011627] px-5 py-15 max-w-6xl mx-auto w-full">
+      <section className="text-center mb-20">
+        <h1 className="text-5xl md:text-6xl font-bold text-white mb-5 bg-gradient-to-r from-blue-500 to-yellow-400 bg-clip-text text-transparent">
+          RNT Next CLI
+        </h1>
+        <p className="text-xl text-gray-400 max-w-2xl mx-auto leading-relaxed">
+          Projeto criado com RNT Next CLI. Configurado com Tailwind CSS e pronto para desenvolvimento.
+        </p>
+      </section>
     </div>
   )
 }
 `
     );
   }
-}
 
-async function createCustomLayout(cssChoice) {
+  // Criar Header
   if (cssChoice === "styled-components") {
-    // Layout com Styled Components
-    fs.writeFileSync(
-      "src/app/layout.tsx",
-      `import type { Metadata } from 'next'
-import { Inter } from 'next/font/google'
-import StyledComponentsRegistry from '@/lib/styled-components-registry'
-import { GlobalStyles } from '@/styles/globalStyles'
-import { Providers } from '@/components/providers'
-import Header from '@/components/layout/header/Header'
-import Footer from '@/components/layout/footer/Footer'
-
-const inter = Inter({ subsets: ['latin'] })
-
-export const metadata: Metadata = {
-  title: 'RNT Next CLI - Criado por RNT',
-  description: 'CLI para criar aplicações Next.js com configurações pré-definidas',
-}
-
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode
-}) {
-  return (
-    <html lang="pt-BR">
-      <body className={inter.className}>
-        <StyledComponentsRegistry>
-          <GlobalStyles />
-          <Providers>
-            <Header />
-            {children}
-            <Footer />
-          </Providers>
-        </StyledComponentsRegistry>
-      </body>
-    </html>
-  )
-}
-`
-    );
-
-    // Header com Styled Components
     fs.writeFileSync(
       "src/components/layout/header/Header.tsx",
       `'use client'
@@ -1241,7 +836,32 @@ export default function RootLayout({
 // ⚠️ ARQUIVO DELETÁVEL - Pode ser removido ao criar seu próprio header
 
 import Link from 'next/link'
-import { HeaderContainer, Logo, NavMenu, NavItem } from './HeaderStyles'
+import styled from 'styled-components'
+import { theme } from '@/styles/theme'
+
+const HeaderContainer = styled.header\`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px;
+  background-color: \${theme.colors.primaryColor};
+  border-bottom: 1px solid \${theme.colors.secondaryColor};
+  position: sticky;
+  top: 0;
+  z-index: 100;
+\`
+
+const Logo = styled.div\`
+  h1 {
+    color: \${theme.colors.textColor};
+    font-size: 1.8rem;
+    font-weight: 700;
+    background: linear-gradient(135deg, \${theme.colors.blue2}, \${theme.colors.yellow2});
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+\`
 
 const Header = () => {
   return (
@@ -1249,105 +869,13 @@ const Header = () => {
       <Logo>
         <h1>RNT</h1>
       </Logo>
-      <NavMenu>
-        <NavItem>
-          <Link href="/">Home</Link>
-        </NavItem>
-        <NavItem>
-          <Link href="/docs">Docs</Link>
-        </NavItem>
-        <NavItem>
-          <Link href="/examples">Examples</Link>
-        </NavItem>
-        <NavItem>
-          <Link href="/about">About</Link>
-        </NavItem>
-      </NavMenu>
     </HeaderContainer>
   )
 }
 
 export default Header`
     );
-
-    // Footer com Styled Components
-    fs.writeFileSync(
-      "src/components/layout/footer/Footer.tsx",
-      `'use client'
-
-// 🦶 FOOTER COMPONENT - Rodapé da aplicação
-// ⚠️ ARQUIVO DELETÁVEL - Pode ser removido ao criar seu próprio footer
-
-import { FaGithub, FaInstagram, FaLinkedin } from 'react-icons/fa'
-import { FooterContainer, SocialLinks, FooterContent } from './FooterStyles'
-
-const getCurrentYear = () => {
-  const date = new Date()
-  return date.getFullYear()
-}
-
-const Footer = () => {
-  return (
-    <FooterContainer>
-      <FooterContent>
-        <p>&copy; {getCurrentYear()} RNT Projects. Todos os direitos reservados.</p>
-        <SocialLinks className="social-links">
-          <a href="https://github.com" target="_blank" rel="noopener noreferrer" aria-label="GitHub">
-            <FaGithub size={24} />
-          </a>
-          <a href="https://linkedin.com" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn">
-            <FaLinkedin size={24} />
-          </a>
-          <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" aria-label="Instagram">
-            <FaInstagram size={24} />
-          </a>
-        </SocialLinks>
-      </FooterContent>
-    </FooterContainer>
-  )
-}
-
-export default Footer`
-    );
   } else {
-    // Layout com Tailwind
-    fs.writeFileSync(
-      "src/app/layout.tsx",
-      `import type { Metadata } from 'next'
-import { Inter } from 'next/font/google'
-import './globals.css'
-import { Providers } from '@/components/providers'
-import Header from '@/components/layout/header/Header'
-import Footer from '@/components/layout/footer/Footer'
-
-const inter = Inter({ subsets: ['latin'] })
-
-export const metadata: Metadata = {
-  title: 'RNT Next CLI - Criado por RNT',
-  description: 'CLI para criar aplicações Next.js com configurações pré-definidas',
-}
-
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode
-}) {
-  return (
-    <html lang="pt-BR">
-      <body className={inter.className}>
-        <Providers>
-          <Header />
-          {children}
-          <Footer />
-        </Providers>
-      </body>
-    </html>
-  )
-}
-`
-    );
-
-    // Header com Tailwind
     fs.writeFileSync(
       "src/components/layout/header/Header.tsx",
       `'use client'
@@ -1361,30 +889,18 @@ const Header = () => {
   return (
     <header className="flex items-center justify-between p-5 bg-[#011627] border-b border-[#023864] sticky top-0 z-50">
       <div className="flex items-center">
-        <h1 className="text-white text-3xl font-bold gradient-text">RNT</h1>
+        <h1 className="text-white text-3xl font-bold bg-gradient-to-r from-blue-500 to-yellow-400 bg-clip-text text-transparent">RNT</h1>
       </div>
-      <nav className="flex gap-8">
-        <Link href="/" className="nav-link">
-          Home
-        </Link>
-        <Link href="/docs" className="nav-link">
-          Docs
-        </Link>
-        <Link href="/examples" className="nav-link">
-          Examples
-        </Link>
-        <Link href="/about" className="nav-link">
-          About
-        </Link>
-      </nav>
     </header>
   )
 }
 
 export default Header`
     );
+  }
 
-    // Footer com Tailwind
+  // Criar Footer
+  if (cssChoice === "styled-components") {
     fs.writeFileSync(
       "src/components/layout/footer/Footer.tsx",
       `'use client'
@@ -1392,7 +908,22 @@ export default Header`
 // 🦶 FOOTER COMPONENT - Rodapé da aplicação
 // ⚠️ ARQUIVO DELETÁVEL - Pode ser removido ao criar seu próprio footer
 
-import { FaGithub, FaInstagram, FaLinkedin } from 'react-icons/fa'
+import styled from 'styled-components'
+import { theme } from '@/styles/theme'
+
+const FooterContainer = styled.footer\`
+  background-color: \${theme.colors.primaryColor};
+  border-top: 1px solid \${theme.colors.secondaryColor};
+  padding: 40px 20px 20px;
+  margin-top: auto;
+  text-align: center;
+
+  p {
+    color: \${theme.colors.textColor};
+    font-size: 14px;
+    opacity: 0.8;
+  }
+\`
 
 const getCurrentYear = () => {
   const date = new Date()
@@ -1401,41 +932,33 @@ const getCurrentYear = () => {
 
 const Footer = () => {
   return (
-    <footer className="bg-[#011627] border-t border-[#023864] py-10 px-5 mt-auto">
-      <div className="max-w-6xl mx-auto flex flex-col items-center gap-5 text-center">
-        <p className="text-white text-sm opacity-80">
-          &copy; {getCurrentYear()} RNT Projects. Todos os direitos reservados.
-        </p>
-        <div className="flex gap-5 items-center">
-          <a 
-            href="https://github.com" 
-            target="_blank" 
-            rel="noopener noreferrer" 
-            aria-label="GitHub"
-            className="text-white transition-all duration-300 p-2 rounded-full flex items-center justify-center hover:text-blue-500 hover:bg-blue-500/10 hover:-translate-y-1"
-          >
-            <FaGithub size={24} />
-          </a>
-          <a 
-            href="https://linkedin.com" 
-            target="_blank" 
-            rel="noopener noreferrer" 
-            aria-label="LinkedIn"
-            className="text-white transition-all duration-300 p-2 rounded-full flex items-center justify-center hover:text-blue-500 hover:bg-blue-500/10 hover:-translate-y-1"
-          >
-            <FaLinkedin size={24} />
-          </a>
-          <a 
-            href="https://instagram.com" 
-            target="_blank" 
-            rel="noopener noreferrer" 
-            aria-label="Instagram"
-            className="text-white transition-all duration-300 p-2 rounded-full flex items-center justify-center hover:text-blue-500 hover:bg-blue-500/10 hover:-translate-y-1"
-          >
-            <FaInstagram size={24} />
-          </a>
-        </div>
-      </div>
+    <FooterContainer>
+      <p>&copy; {getCurrentYear()} RNT Projects. Todos os direitos reservados.</p>
+    </FooterContainer>
+  )
+}
+
+export default Footer`
+    );
+  } else {
+    fs.writeFileSync(
+      "src/components/layout/footer/Footer.tsx",
+      `'use client'
+
+// 🦶 FOOTER COMPONENT - Rodapé da aplicação
+// ⚠️ ARQUIVO DELETÁVEL - Pode ser removido ao criar seu próprio footer
+
+const getCurrentYear = () => {
+  const date = new Date()
+  return date.getFullYear()
+}
+
+const Footer = () => {
+  return (
+    <footer className="bg-[#011627] border-t border-[#023864] py-10 px-5 mt-auto text-center">
+      <p className="text-white text-sm opacity-80">
+        &copy; {getCurrentYear()} RNT Projects. Todos os direitos reservados.
+      </p>
     </footer>
   )
 }
@@ -1443,13 +966,12 @@ const Footer = () => {
 export default Footer`
     );
   }
-}
 
-async function createExampleTests(cssChoice) {
-  // Teste de exemplo para a página inicial
-  fs.writeFileSync(
-    "__tests__/page.test.tsx",
-    `// 🧪 TESTE DA PÁGINA INICIAL
+  // Criar testes de exemplo se solicitado
+  if (installTests) {
+    fs.writeFileSync(
+      "__tests__/page.test.tsx",
+      `// 🧪 TESTE DA PÁGINA INICIAL
 // ⚠️ ARQUIVO DELETÁVEL - Pode ser removido ao criar seus próprios testes
 
 import { render, screen } from '@testing-library/react'
@@ -1469,74 +991,10 @@ describe('Home Page', () => {
     const heading = screen.getByText('RNT Next CLI')
     expect(heading).toBeInTheDocument()
   })
-
-  it('renders the description', () => {
-    render(<Home />)
-    
-    const description = screen.getByText(/Um CLI poderoso para criar aplicações Next.js/i)
-    expect(description).toBeInTheDocument()
-  })
-
-  it('renders feature cards', () => {
-    render(<Home />)
-    
-    expect(screen.getByText('Next.js 15+')).toBeInTheDocument()
-    expect(screen.getByText('Pronto para Produção')).toBeInTheDocument()
-  })
 })
 `
-  );
-
-  // Teste de exemplo para componentes
-  fs.writeFileSync(
-    "src/__tests__/components.test.tsx",
-    `// 🧪 TESTES DE COMPONENTES
-// ⚠️ ARQUIVO DELETÁVEL - Pode ser removido ao criar seus próprios testes
-
-import { render, screen } from '@testing-library/react'
-import Header from '@/components/layout/header/Header'
-import Footer from '@/components/layout/footer/Footer'
-
-describe('Header Component', () => {
-  it('renders the logo', () => {
-    render(<Header />)
-    
-    const logo = screen.getByText('RNT')
-    expect(logo).toBeInTheDocument()
-  })
-
-  it('renders navigation links', () => {
-    render(<Header />)
-    
-    expect(screen.getByText('Home')).toBeInTheDocument()
-    expect(screen.getByText('Docs')).toBeInTheDocument()
-    expect(screen.getByText('Examples')).toBeInTheDocument()
-    expect(screen.getByText('About')).toBeInTheDocument()
-  })
-})
-
-describe('Footer Component', () => {
-  it('renders copyright text', () => {
-    render(<Footer />)
-    
-    const copyright = screen.getByText(/RNT Projects. Todos os direitos reservados/i)
-    expect(copyright).toBeInTheDocument()
-  })
-
-  it('renders social links', () => {
-    render(<Footer />)
-    
-    const githubLink = screen.getByLabelText('GitHub')
-    const linkedinLink = screen.getByLabelText('LinkedIn')
-    const instagramLink = screen.getByLabelText('Instagram')
-    
-    expect(githubLink).toBeInTheDocument()
-    expect(linkedinLink).toBeInTheDocument()
-    expect(instagramLink).toBeInTheDocument()
-  })
-})
-`
-  );
+    );
+  }
 }
 
 main().catch(console.error);

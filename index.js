@@ -140,8 +140,7 @@ async function main() {
   }
 
   if (installExtraDeps) {
-    prodDependencies +=
-      " imask zod react-hook-form next-safe-layouts @svgr/webpack";
+    prodDependencies += " imask zod react-hook-form @svgr/webpack";
   }
 
   execCommand(`npm install ${prodDependencies} --save`);

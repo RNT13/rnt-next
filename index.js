@@ -132,7 +132,7 @@ async function main() {
   console.log("📦 Instalando dependências de produção...");
 
   let prodDependencies =
-    "react-redux @reduxjs/toolkit framer-motion react-icons immer redux@latest clsx class-variance-authority lucide-react";
+    "react-redux @reduxjs/toolkit immer redux@latest clsx class-variance-authority lucide-react";
 
   if (finalChoice === "styled-components") {
     prodDependencies =
@@ -140,7 +140,8 @@ async function main() {
   }
 
   if (installExtraDeps) {
-    prodDependencies += " imask zod react-hook-form @svgr/webpack";
+    prodDependencies +=
+      " imask zod react-hook-form react-hot-toast framer-motion react-icons";
   }
 
   execCommand(`npm install ${prodDependencies} --save`);

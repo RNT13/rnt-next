@@ -43,33 +43,33 @@ async function main() {
     "1️⃣ Qual biblioteca de CSS você deseja usar?\n   1. Styled Components\n   2. Tailwind CSS\n   Escolha (1 ou 2): "
   );
 
-  // 2. Pergunta sobre Turbopack
-  const turboChoice = await askQuestion(
-    "\n2️⃣ Deseja habilitar o Turbopack?\n   1. Sim\n   2. Não\n   Escolha (1 ou 2): "
-  );
-
-  // 3. Pergunta sobre projeto limpo
+  // 2. Pergunta sobre projeto limpo
   const emptyChoice = await askQuestion(
-    "\n3️⃣ Deseja criar um projeto limpo (--empty)?\n   1. Sim (projeto vazio)\n   2. Não (com exemplos)\n   Escolha (1 ou 2): "
+    "\n2️⃣ Deseja criar um projeto limpo (--empty)?\n   1. Sim (projeto vazio)\n   2. Não (com exemplos)\n   Escolha (1 ou 2): "
   );
 
-  // 4. Pergunta sobre dependências de teste
+  // 3. Pergunta sobre dependências de teste
   const testChoice = await askQuestion(
-    "\n4️⃣ Deseja instalar dependências de teste?\n   1. Sim (Jest + Testing Library)\n   2. Não\n   Escolha (1 ou 2): "
+    "\n3️⃣ Deseja instalar dependências de teste?\n   1. Sim (Jest + Testing Library)\n   2. Não\n   Escolha (1 ou 2): "
   );
 
-  // 5. Pergunta sobre dependências adicionais
+  // 4. Pergunta sobre dependências adicionais
   const extraDepsChoice = await askQuestion(
-    "\n5️⃣ Deseja instalar pacote de dependências adicionais?\n   1. Sim (React Hook Form, Zod, iMask, etc.)\n   2. Não (apenas essenciais)\n   Escolha (1 ou 2): "
+    "\n4️⃣ Deseja instalar pacote de dependências adicionais?\n   1. Sim (React Hook Form, Zod, iMask, etc.)\n   2. Não (apenas essenciais)\n   Escolha (1 ou 2): "
+  );
+
+  // 5. Pergunta sobre backend com Prisma
+  const backendChoice = await askQuestion(
+    "\n5️⃣ Deseja instalar ambiente backend com Prisma e MySQL?\n   1. Sim (Prisma + MySQL)\n   2. Não\n   Escolha (1 ou 2): "
   );
 
   // Processando escolhas
   const useStyledComponents = cssChoice === "1";
   const useTailwind = cssChoice === "2" || !useStyledComponents;
-  const useTurbo = turboChoice === "1";
   const useEmpty = emptyChoice === "1";
   const installTests = testChoice === "1";
   const installExtraDeps = extraDepsChoice === "1";
+  const installBackend = backendChoice === "1";
 
   const finalChoice = useStyledComponents ? "styled-components" : "tailwind";
 
@@ -81,10 +81,10 @@ async function main() {
       finalChoice === "styled-components" ? "Styled Components" : "Tailwind CSS"
     }`
   );
-  console.log(`⚡ Turbopack: ${useTurbo ? "Sim" : "Não"}`);
   console.log(`📦 Projeto: ${useEmpty ? "Limpo (--empty)" : "Com exemplos"}`);
   console.log(`🧪 Testes: ${installTests ? "Sim" : "Não"}`);
   console.log(`📚 Deps. Adicionais: ${installExtraDeps ? "Sim" : "Não"}`);
+  console.log(`🗄️ Backend: ${installBackend ? "Prisma + MySQL" : "Não"}`);
   console.log("=".repeat(50));
 
   const confirmChoice = await askQuestion(
@@ -108,10 +108,6 @@ async function main() {
     createCommand += " --tailwind";
   } else {
     createCommand += " --no-tailwind";
-  }
-
-  if (useTurbo) {
-    createCommand += " --turbo";
   }
 
   if (useEmpty) {
@@ -142,6 +138,10 @@ async function main() {
   if (installExtraDeps) {
     prodDependencies +=
       " imask zod react-hook-form react-hot-toast framer-motion react-icons";
+  }
+
+  if (installBackend) {
+    prodDependencies += " prisma @prisma/client";
   }
 
   execCommand(`npm install ${prodDependencies} --save`);
@@ -178,6 +178,8 @@ async function main() {
 
   if (!useEmpty) {
     folders.push(
+      "src/app/(private)",
+      "src/app/(public)",
       "src/components/layout",
       "src/components/layout/header",
       "src/components/layout/footer"
@@ -186,6 +188,10 @@ async function main() {
 
   if (installTests) {
     folders.push("__tests__", "src/__tests__");
+  }
+
+  if (installBackend) {
+    folders.push("prisma");
   }
 
   folders.forEach((folder) =>
@@ -247,23 +253,9 @@ insert_final_newline = true
 `
   );
 
-  // Next.js config
+  // Next.js config (sem experimental turbo)
   let nextConfig = `/** @type {import('next').NextConfig} */
 const nextConfig = {`;
-
-  if (useTurbo) {
-    nextConfig += `
-  experimental: {
-    turbo: {
-      rules: {
-        '*.svg': {
-          loaders: ['@svgr/webpack'],
-          as: '*.js',
-        },
-      },
-    },
-  },`;
-  }
 
   if (finalChoice === "styled-components") {
     nextConfig += `
@@ -317,10 +309,42 @@ module.exports = createJestConfig(customJestConfig)
     );
   }
 
-  // Theme configuration
+  // Criar colorUtils
+  fs.writeFileSync(
+    "src/utils/colorUtils.ts",
+    `// 🎨 COLOR UTILS - Utilitários para geração de variantes de cores HSL
+
+export function colorHSLVariants(h: number, s: number, l: number) {
+  const clamp = (val: number) => Math.min(100, Math.max(0, val))
+  return {
+    base: \`hsl(\${h}, \${s}%, \${clamp(l)}%)\`,
+    light: \`hsl(\${h}, \${s}%, \${clamp(l + 10)}%)\`,
+    light02: \`hsla(\${h}, \${s}%, \${clamp(l + 2)}%, 0.2)\`,
+    light04: \`hsla(\${h}, \${s}%, \${clamp(l + 4)}%, 0.4)\`,
+    light08: \`hsla(\${h}, \${s}%, \${clamp(l + 6)}%, 0.8)\`,
+    light20: \`hsl(\${h}, \${s}%, \${clamp(l + 20)}%)\`,
+    light30: \`hsl(\${h}, \${s}%, \${clamp(l + 30)}%)\`,
+    light40: \`hsl(\${h}, \${s}%, \${clamp(l + 40)}%)\`,
+    light50: \`hsl(\${h}, \${s}%, \${clamp(l + 50)}%)\`,
+    dark: \`hsl(\${h}, \${s}%, \${clamp(l - 10)}%)\`,
+    dark02: \`hsla(\${h}, \${s}%, \${clamp(l - 2)}%, 0.2)\`,
+    dark04: \`hsla(\${h}, \${s}%, \${clamp(l - 4)}%, 0.4)\`,
+    dark08: \`hsla(\${h}, \${s}%, \${clamp(l - 6)}%, 0.8)\`,
+    dark20: \`hsl(\${h}, \${s}%, \${clamp(l - 20)}%)\`,
+    dark30: \`hsl(\${h}, \${s}%, \${clamp(l - 30)}%)\`,
+    dark40: \`hsl(\${h}, \${s}%, \${clamp(l - 40)}%)\`,
+    dark50: \`hsl(\${h}, \${s}%, \${clamp(l - 50)}%)\`
+  }
+}
+`
+  );
+
+  // Theme configuration atualizado
   fs.writeFileSync(
     "src/styles/theme.ts",
     `// 🎨 ARQUIVO DE TEMA - Configurações de cores e breakpoints do projeto
+
+import { colorHSLVariants } from '@/utils/colorUtils'
 
 export const media = {
   sm: '@media (max-width: 480px)',
@@ -329,11 +353,20 @@ export const media = {
 }
 
 export const transitions = {
-  default: 'all 0.3s ease'
+  default: 'all 0.2s ease'
 }
+
+export const baseBlue = colorHSLVariants(220, 80, 50)
+export const baseGreen = colorHSLVariants(100, 100, 50)
+export const baseRed = colorHSLVariants(0, 100, 50)
+export const baseCyan = colorHSLVariants(180, 150, 50)
 
 export const theme = {
   colors: {
+    baseBlue: baseBlue,
+    baseGreen: baseGreen,
+    baseRed: baseRed,
+    baseCyan: baseCyan,
     primaryColor: '#011627',
     secondaryColor: '#023864',
     thirdColor: '#0d6efd',
@@ -352,7 +385,9 @@ export const theme = {
     redHover: '#FF4837',
     error: '#AB2E46',
     green: '#008000',
-    green2: '#44BD32'
+    green2: '#44BD32',
+    neonBlue: '#00FFD5 ',
+    neonGree: '#00FF6A '
   }
 }
 
@@ -424,6 +459,62 @@ export const themeConfig = {
     await createTailwindFiles();
   }
 
+  // Middleware
+  fs.writeFileSync(
+    "src/middleware.ts",
+    `// 🔒 MIDDLEWARE - Controle de autenticação e rotas
+
+import { MiddlewareConfig, NextRequest, NextResponse } from 'next/server'
+
+const publicRoutes = [
+  { path: '/', whenAuthenticated: 'next' },
+  { path: '/sign-in', whenAuthenticated: 'redirect' },
+  { path: '/register', whenAuthenticated: 'redirect' },
+  { path: '/pricing', whenAuthenticated: 'next' }
+] as const
+
+const REDIRECT_WHEN_NOT_AUTHENTICATED_ROUTE = '/sign-in'
+
+export function middleware(request: NextRequest) {
+  const path = request.nextUrl.pathname
+  const matchedPublicRoute = publicRoutes.find(route => route.path === path)
+  const authToken = request.cookies.get('token')
+
+  //1 - Se o usuário não estiver autenticado e o caminho da rota não for público, redireciona para a página de login
+  if (!authToken && matchedPublicRoute) {
+    return NextResponse.next()
+  }
+
+  //2 - se o usuario não estiver autenticado e o caminho da rota não for público, redireciona para a página de login
+  if (!authToken && !matchedPublicRoute) {
+    const redirectUrl = request.nextUrl.clone()
+    redirectUrl.pathname = REDIRECT_WHEN_NOT_AUTHENTICATED_ROUTE
+    return NextResponse.redirect(redirectUrl)
+  }
+
+  //3 - Se o usuário estiver autenticado e o caminho da rota não for público, redireciona para a página inicial
+  if (authToken && matchedPublicRoute?.whenAuthenticated === 'redirect') {
+    const redirectUrl = request.nextUrl.clone()
+    redirectUrl.pathname = '/'
+    return NextResponse.redirect(redirectUrl)
+  }
+
+  return NextResponse.next()
+}
+
+export const config: MiddlewareConfig = {
+  /*
+   * Match all request paths except for the ones starting with:
+   * - api (API routes)
+   * - _next/static (static files)
+   * - _next/image (image optimization files)
+   * - favicon.ico, sitemap.xml, robots.txt (metadata files)
+   */
+  matcher: ['/((?!api|_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt).*)']
+}
+`
+  );
+
   // Providers
   fs.writeFileSync(
     "src/components/providers.tsx",
@@ -443,43 +534,238 @@ export function Providers({ children }: { children: React.ReactNode }) {
 }`
   );
 
-  // Redux Store
+  // .env file
   fs.writeFileSync(
-    "src/redux/store.ts",
-    `// 🏪 REDUX STORE - Configuração do gerenciamento de estado
-// Adicione seus slices na pasta 'slices' e importe aqui
+    ".env",
+    `# 🔐 VARIÁVEIS DE AMBIENTE - Configurações do projeto
 
-import { combineReducers, configureStore as toolkitConfigureStore } from '@reduxjs/toolkit'
+# Next.js
+NEXTAUTH_URL=http://localhost:3000
+NEXTAUTH_SECRET=your-secret-key-here
 
-// Import your slices here
-// import counterSlice from './slices/counterSlice'
-
-const rootReducer = combineReducers({
-  // Add your reducers here
-  // counter: counterSlice,
-})
-
-export type RootState = ReturnType<typeof rootReducer>
-
-export function configureStore(preloadedState?: Partial<RootState>) {
-  return toolkitConfigureStore({
-    reducer: rootReducer,
-    preloadedState,
-    middleware: (getDefaultMiddleware) =>
-      getDefaultMiddleware({
-        serializableCheck: {
-          ignoredActions: ['persist/PERSIST'],
-        },
-      }),
-  })
+# Database (se backend foi escolhido)
+${
+  installBackend
+    ? `DATABASE_URL="mysql://username:password@localhost:3306/database_name"`
+    : `# DATABASE_URL="mysql://username:password@localhost:3306/database_name"`
 }
 
-export const store = configureStore()
-
-export type AppStore = ReturnType<typeof configureStore>
-export type AppDispatch = AppStore['dispatch']
-export type RootReducer = typeof rootReducer`
+# API Keys
+# API_KEY=your-api-key-here
+`
   );
+
+  // Redux Store baseado na escolha de testes
+  if (installTests) {
+    fs.writeFileSync(
+      "src/redux/store.ts",
+      `// 🏪 REDUX STORE - Configuração do gerenciamento de estado com preloaded state para testes
+
+import { configureStore } from '@reduxjs/toolkit'
+import authReducer from './slices/authSlice'
+
+export const store = configureStore({
+  reducer: {
+    auth: authReducer
+  }
+})
+
+export type RootState = ReturnType<typeof store.getState>
+export type AppDispatch = typeof store.dispatch
+`
+    );
+
+    // AuthSlice para testes
+    fs.writeFileSync(
+      "src/redux/slices/authSlice.ts",
+      `// 🔐 AUTH SLICE - Gerenciamento de estado de autenticação
+
+import { createSlice, PayloadAction } from '@reduxjs/toolkit'
+
+interface AuthState {
+  user: {
+    id: string
+    name: string
+    email: string
+  } | null
+  isAuthenticated: boolean
+  loading: boolean
+}
+
+const initialState: AuthState = {
+  user: null,
+  isAuthenticated: false,
+  loading: false
+}
+
+const authSlice = createSlice({
+  name: 'auth',
+  initialState,
+  reducers: {
+    loginStart: (state) => {
+      state.loading = true
+    },
+    loginSuccess: (state, action: PayloadAction<{ id: string; name: string; email: string }>) => {
+      state.loading = false
+      state.isAuthenticated = true
+      state.user = action.payload
+    },
+    loginFailure: (state) => {
+      state.loading = false
+      state.isAuthenticated = false
+      state.user = null
+    },
+    logout: (state) => {
+      state.isAuthenticated = false
+      state.user = null
+      state.loading = false
+    }
+  }
+})
+
+export const { loginStart, loginSuccess, loginFailure, logout } = authSlice.actions
+export default authSlice.reducer
+`
+    );
+  } else {
+    fs.writeFileSync(
+      "src/redux/store.ts",
+      `// 🏪 REDUX STORE - Configuração simples do gerenciamento de estado
+
+import { configureStore } from '@reduxjs/toolkit'
+import authReducer from './slices/authSlice'
+
+export const store = configureStore({
+  reducer: {
+    auth: authReducer
+  }
+})
+
+export type RootState = ReturnType<typeof store.getState>
+export type AppDispatch = typeof store.dispatch
+`
+    );
+
+    // AuthSlice simples
+    fs.writeFileSync(
+      "src/redux/slices/authSlice.ts",
+      `// 🔐 AUTH SLICE - Gerenciamento de estado de autenticação
+
+import { createSlice, PayloadAction } from '@reduxjs/toolkit'
+
+interface AuthState {
+  user: {
+    id: string
+    name: string
+    email: string
+  } | null
+  isAuthenticated: boolean
+}
+
+const initialState: AuthState = {
+  user: null,
+  isAuthenticated: false
+}
+
+const authSlice = createSlice({
+  name: 'auth',
+  initialState,
+  reducers: {
+    loginSuccess: (state, action: PayloadAction<{ id: string; name: string; email: string }>) => {
+      state.isAuthenticated = true
+      state.user = action.payload
+    },
+    logout: (state) => {
+      state.isAuthenticated = false
+      state.user = null
+    }
+  }
+})
+
+export const { loginSuccess, logout } = authSlice.actions
+export default authSlice.reducer
+`
+    );
+  }
+
+  // Configuração do Prisma se backend foi escolhido
+  if (installBackend) {
+    console.log("🗄️ Configurando Prisma...");
+
+    // Executar prisma init
+    execCommand("npx prisma init");
+
+    // Schema do Prisma com comentários
+    fs.writeFileSync(
+      "prisma/schema.prisma",
+      `// 🗄️ PRISMA SCHEMA - Configuração do banco de dados
+// Este arquivo define a estrutura do seu banco de dados
+
+// Configuração do gerador do Prisma Client
+generator client {
+  provider = "prisma-client-js"
+}
+
+// Configuração da conexão com o banco de dados
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// 👤 MODEL USER - Modelo básico de usuário
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  password  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("users")
+}
+
+// 📝 COMO USAR ESTE ARQUIVO:
+// 
+// 1. Configure sua DATABASE_URL no arquivo .env
+//    Exemplo: DATABASE_URL="mysql://username:password@localhost:3306/database_name"
+//
+// 2. Para criar o banco de dados e tabelas:
+//    npx prisma db push
+//
+// 3. Para gerar o Prisma Client:
+//    npx prisma generate
+//
+// 4. Para visualizar o banco no Prisma Studio:
+//    npx prisma studio
+//
+// 5. Para usar um banco existente:
+//    npx prisma db pull (puxa a estrutura do banco existente)
+//    npx prisma generate (gera o client baseado na estrutura)
+//
+// 6. Para criar e aplicar migrations:
+//    npx prisma migrate dev --name init
+//
+// 📚 DOCUMENTAÇÃO: https://www.prisma.io/docs
+`
+    );
+
+    // Arquivo de configuração do Prisma Client
+    fs.writeFileSync(
+      "src/lib/prisma.ts",
+      `// 🗄️ PRISMA CLIENT - Configuração da conexão com o banco de dados
+
+import { PrismaClient } from '@prisma/client'
+
+const globalForPrisma = globalThis as unknown as {
+  prisma: PrismaClient | undefined
+}
+
+export const prisma = globalForPrisma.prisma ?? new PrismaClient()
+
+if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma
+`
+    );
+  }
 
   // Criar layout baseado na escolha
   await createLayout(finalChoice, useEmpty);
@@ -499,7 +785,6 @@ export type RootReducer = typeof rootReducer`
       finalChoice === "styled-components" ? "Styled Components" : "Tailwind CSS"
     }`
   );
-  console.log(`⚡ Turbopack: ${useTurbo ? "Habilitado" : "Desabilitado"}`);
   console.log(`📦 Tipo: ${useEmpty ? "Projeto limpo" : "Com exemplos"}`);
   if (installTests) {
     console.log("🧪 Testes: npm test");
@@ -507,19 +792,25 @@ export type RootReducer = typeof rootReducer`
   if (installExtraDeps) {
     console.log("📚 Dependências adicionais instaladas");
   }
+  if (installBackend) {
+    console.log("🗄️ Backend: Prisma + MySQL configurado");
+    console.log("   - Configure DATABASE_URL no .env");
+    console.log("   - Execute: npx prisma db push");
+    console.log("   - Execute: npx prisma generate");
+  }
   console.log("💙 Criado por RNT");
   console.log("=".repeat(50));
 }
 
 async function createStyledComponentsFiles() {
-  // Global Styles para Styled Components
+  // Global Styles para Styled Components atualizado
   fs.writeFileSync(
     "src/styles/globalStyles.tsx",
     `'use client'
 
 // 🎨 GLOBAL STYLES - Estilos globais com Styled Components
 
-import { createGlobalStyle } from 'styled-components';
+import styled, { createGlobalStyle } from 'styled-components';
 import { theme } from './theme';
 
 export const GlobalStyles = createGlobalStyle\`
@@ -529,35 +820,83 @@ export const GlobalStyles = createGlobalStyle\`
     box-sizing: border-box;
   }
 
-  body {
-    background-color: \${theme.colors.primaryColor};
-    color: \${theme.colors.textColor};
-    font-family: 'Inter', sans-serif;
-  }
-
-  a {
-    text-decoration: none;
-    color: inherit;
-  }
-
   html {
     scroll-behavior: smooth;
   }
 
-  ul, ol {
-    list-style: none;
+  body {
+    background-color: \${theme.colors.baseBlue.dark20};
+    color: \${theme.colors.baseBlue.dark50};
   }
 
-  button {
-    border: none;
-    background: none;
-    cursor: pointer;
-  }
-
-  input, textarea {
-    outline: none;
+  .container {
+    max-width: 1024px;
+    margin: 0 auto;
   }
 \`;
+
+export const OverlayBlur = styled.div\`
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  backdrop-filter: blur(5px);
+  z-index: 100;
+\`
+
+export const OverlayDarck = styled.div\`
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.6);
+  z-index: 10;
+\`
+
+export const CloseButton = styled.button\`
+  border-radius: 50%;
+  margin: 0;
+  padding: 0;
+  position: absolute;
+  top: 0px;
+  right: 0px;
+  background-color: transparent;
+  border: transparent;
+  cursor: pointer;
+
+  svg {
+    font-size: 24px;
+    color: \${theme.colors.baseBlue.dark20};
+  }
+
+  &:hover {
+    svg {
+      color: \${theme.colors.baseBlue.light};
+    }
+  }
+\`
+
+export const TitleH2 = styled.h2\`
+  font-size: 24px;
+  font-weight: 600;
+  color: \${theme.colors.baseBlue.light30};
+\`
+
+export const TitleH3 = styled.h3\`
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 12px;
+  color: \${theme.colors.baseBlue.dark30};
+\`
+
+export const MinorTextH4 = styled.h3\`
+  font-size: 14px;
+  font-weight: 300;
+  margin-bottom: 8px;
+  color: \${theme.colors.baseBlue.dark30};
+\`
 `
   );
 
@@ -627,6 +966,11 @@ body {
 
 html {
   scroll-behavior: smooth;
+}
+
+.container {
+  max-width: 1024px;
+  margin: 0 auto;
 }
 `;
 
@@ -736,7 +1080,15 @@ export default function RootLayout({
 }
 
 async function createExampleFiles(cssChoice, installTests) {
-  // Criar página inicial de exemplo
+  // Criar estrutura de rotas com exemplos
+  if (!fs.existsSync("src/app/(public)")) {
+    fs.mkdirSync("src/app/(public)", { recursive: true });
+  }
+  if (!fs.existsSync("src/app/(private)")) {
+    fs.mkdirSync("src/app/(private)", { recursive: true });
+  }
+
+  // Página inicial de exemplo
   if (cssChoice === "styled-components") {
     fs.writeFileSync(
       "src/app/page.tsx",
@@ -825,6 +1177,216 @@ export default function Home() {
 `
     );
   }
+
+  // Criar páginas de exemplo nas rotas
+  // Página pública de exemplo
+  if (cssChoice === "styled-components") {
+    fs.writeFileSync(
+      "src/app/(public)/layout.tsx",
+      `// 🌐 LAYOUT PÚBLICO - Layout para páginas públicas
+// ⚠️ ARQUIVO DELETÁVEL - Pode ser removido ao criar seu próprio layout
+
+export default function PublicLayout({
+  children,
+}: {
+  children: React.ReactNode
+}) {
+  return (
+    <div>
+      {children}
+    </div>
+  )
+}
+`
+    );
+
+    fs.writeFileSync(
+      "src/app/(public)/loading.tsx",
+      `'use client'
+
+// ⏳ LOADING PÚBLICO - Componente de loading para páginas públicas
+// ⚠️ ARQUIVO DELETÁVEL - Pode ser removido ao criar seu próprio loading
+
+import styled, { keyframes } from 'styled-components'
+import { theme } from '@/styles/theme'
+
+const spin = keyframes\`
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+\`
+
+const LoadingContainer = styled.div\`
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 50vh;
+\`
+
+const Spinner = styled.div\`
+  border: 4px solid \${theme.colors.gray2};
+  border-top: 4px solid \${theme.colors.blue2};
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  animation: \${spin} 2s linear infinite;
+\`
+
+export default function Loading() {
+  return (
+    <LoadingContainer>
+      <Spinner />
+    </LoadingContainer>
+  )
+}
+`
+    );
+
+    fs.writeFileSync(
+      "src/app/(public)/not-found.tsx",
+      `'use client'
+
+// 🚫 NOT FOUND PÚBLICO - Página 404 para rotas públicas
+// ⚠️ ARQUIVO DELETÁVEL - Pode ser removido ao criar sua própria página 404
+
+import Link from 'next/link'
+import styled from 'styled-components'
+import { theme } from '@/styles/theme'
+
+const NotFoundContainer = styled.div\`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 50vh;
+  text-align: center;
+  padding: 20px;
+
+  h1 {
+    font-size: 4rem;
+    color: \${theme.colors.blue2};
+    margin-bottom: 20px;
+  }
+
+  h2 {
+    font-size: 2rem;
+    color: \${theme.colors.textColor};
+    margin-bottom: 20px;
+  }
+
+  p {
+    color: \${theme.colors.gray2};
+    margin-bottom: 30px;
+    max-width: 500px;
+  }
+\`
+
+const BackButton = styled(Link)\`
+  background-color: \${theme.colors.blue2};
+  color: white;
+  padding: 12px 24px;
+  border-radius: 8px;
+  text-decoration: none;
+  transition: background-color 0.3s;
+
+  &:hover {
+    background-color: \${theme.colors.blue};
+  }
+\`
+
+export default function NotFound() {
+  return (
+    <NotFoundContainer>
+      <h1>404</h1>
+      <h2>Página não encontrada</h2>
+      <p>A página que você está procurando não existe ou foi movida.</p>
+      <BackButton href="/">Voltar ao início</BackButton>
+    </NotFoundContainer>
+  )
+}
+`
+    );
+  } else {
+    fs.writeFileSync(
+      "src/app/(public)/layout.tsx",
+      `// 🌐 LAYOUT PÚBLICO - Layout para páginas públicas
+// ⚠️ ARQUIVO DELETÁVEL - Pode ser removido ao criar seu próprio layout
+
+export default function PublicLayout({
+  children,
+}: {
+  children: React.ReactNode
+}) {
+  return (
+    <div>
+      {children}
+    </div>
+  )
+}
+`
+    );
+
+    fs.writeFileSync(
+      "src/app/(public)/loading.tsx",
+      `// ⏳ LOADING PÚBLICO - Componente de loading para páginas públicas
+// ⚠️ ARQUIVO DELETÁVEL - Pode ser removido ao criar seu próprio loading
+
+export default function Loading() {
+  return (
+    <div className="flex justify-center items-center min-h-[50vh]">
+      <div className="border-4 border-gray-400 border-t-blue-500 rounded-full w-10 h-10 animate-spin"></div>
+    </div>
+  )
+}
+`
+    );
+
+    fs.writeFileSync(
+      "src/app/(public)/not-found.tsx",
+      `// 🚫 NOT FOUND PÚBLICO - Página 404 para rotas públicas
+// ⚠️ ARQUIVO DELETÁVEL - Pode ser removido ao criar sua própria página 404
+
+import Link from 'next/link'
+
+export default function NotFound() {
+  return (
+    <div className="flex flex-col items-center justify-center min-h-[50vh] text-center p-5">
+      <h1 className="text-6xl text-blue-500 mb-5">404</h1>
+      <h2 className="text-3xl text-white mb-5">Página não encontrada</h2>
+      <p className="text-gray-400 mb-8 max-w-lg">
+        A página que você está procurando não existe ou foi movida.
+      </p>
+      <Link 
+        href="/" 
+        className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-lg transition-colors"
+      >
+        Voltar ao início
+      </Link>
+    </div>
+  )
+}
+`
+    );
+  }
+
+  // Layout privado
+  fs.writeFileSync(
+    "src/app/(private)/layout.tsx",
+    `// 🔒 LAYOUT PRIVADO - Layout para páginas privadas
+// ⚠️ ARQUIVO DELETÁVEL - Pode ser removido ao criar seu próprio layout
+
+export default function PrivateLayout({
+  children,
+}: {
+  children: React.ReactNode
+}) {
+  return (
+    <div>
+      {children}
+    </div>
+  )
+}
+`
+  );
 
   // Criar Header
   if (cssChoice === "styled-components") {

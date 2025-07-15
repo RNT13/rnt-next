@@ -1,7 +1,7 @@
 {
   "name": "rnt-next",
-  "version": "3.0.2",
-  "description": "CLI para criar aplicações Next.js com configuração completa: Styled Components/Tailwind, Turbopack opcional, projeto limpo/exemplos, testes opcionais e dependências adicionais - Criado por RNT",
+  "version": "4.0.0",
+  "description": "CLI para criar aplicações Next.js com configuração completa: Styled Components/Tailwind, projeto limpo/exemplos, testes opcionais, dependências adicionais e backend com Prisma/MySQL - Criado por RNT",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
@@ -14,11 +14,15 @@
     "typescript",
     "styled-components",
     "tailwind",
-    "turbopack",
     "jest",
     "testing",
     "empty",
     "interactive",
+    "prisma",
+    "mysql",
+    "backend",
+    "colorutils",
+    "middleware",
     "rnt"
   ],
   "author": "RNT <rnt@example.com>",

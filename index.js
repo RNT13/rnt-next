@@ -137,7 +137,7 @@ async function main() {
 
   if (installExtraDeps) {
     prodDependencies +=
-      " imask zod react-hook-form @hookform/resolvers react-hot-toast framer-motion react-icons";
+      "imask react-imask zod react-hook-form @hookform/resolvers react-hot-toast framer-motion react-icons";
   }
 
   if (installBackend) {

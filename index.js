@@ -141,7 +141,7 @@ async function main() {
   }
 
   if (installBackend) {
-    prodDependencies += " prisma @prisma/client axios";
+    prodDependencies += " prisma @prisma/client";
   }
 
   execCommand(`npm install ${prodDependencies} --save`);

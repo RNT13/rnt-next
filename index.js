@@ -347,9 +347,9 @@ export function colorHSLVariants(h: number, s: number, l: number) {
 import { colorHSLVariants } from '@/utils/colorUtils'
 
 export const media = {
-  sm: '@media (max-width: 480px)',
-  md: '@media (max-width: 768px)',
-  lg: '@media (max-width: 1024px)'
+  pc: '@media (max-width: 1024px)'
+  tablet: '@media (max-width: 768px)',
+  mobile: '@media (max-width: 480px)',
 }
 
 export const transitions = {

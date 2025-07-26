@@ -137,7 +137,7 @@ async function main() {
 
   if (installExtraDeps) {
     prodDependencies +=
-      "formik yup react-input-mask react-hot-toast framer-motion react-icons";
+      "formik yup react-input-mask react-hot-toast react-loading-skeleton framer-motion react-icons";
   }
 
   if (installBackend) {

@@ -149,10 +149,10 @@ async function main() {
   console.log("📦 Instalando dependências de desenvolvimento...");
 
   let devDependencies =
-    "eslint-plugin-prettier prettier eslint-config-prettier";
+    "eslint-plugin-prettier prettier eslint-config-prettier @types/react-input-mask";
 
   if (finalChoice === "styled-components") {
-    devDependencies += " @types/styled-components";
+    devDependencies += " @types/styled-components ";
   }
 
   if (installTests) {

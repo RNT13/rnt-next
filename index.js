@@ -137,7 +137,7 @@ async function main() {
 
   if (installExtraDeps) {
     prodDependencies +=
-      "formik yup react-input-mask react-hot-toast react-loading-skeleton framer-motion react-icons";
+      "formik yup imask react-imask react-hot-toast react-loading-skeleton framer-motion react-icons";
   }
 
   if (installBackend) {
@@ -149,7 +149,7 @@ async function main() {
   console.log("📦 Instalando dependências de desenvolvimento...");
 
   let devDependencies =
-    "eslint-plugin-prettier prettier eslint-config-prettier @types/react-input-mask";
+    "eslint-plugin-prettier prettier eslint-config-prettier";
 
   if (finalChoice === "styled-components") {
     devDependencies += " @types/styled-components ";

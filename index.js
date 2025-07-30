@@ -101,7 +101,7 @@ async function main() {
   // 🚀 Criando um novo projeto com Next.js e TypeScript
   console.log("📦 Criando projeto com Next.js...");
 
-  let createCommand = `npx --yes create-next-app@latest ${appName} --typescript --eslint --app --src-dir --import-alias "@/*"`;
+  let createCommand = `npx create-next-app@latest ${appName} --typescript --eslint --app --src-dir --import-alias "@/*"`;
 
   // Adicionar flags baseadas nas escolhas
   if (useTailwind) {
@@ -171,7 +171,6 @@ async function main() {
     "src/utils",
     "src/redux",
     "src/redux/slices",
-    "src/types",
     ".vscode",
   ];
 
@@ -346,7 +345,7 @@ export function colorHSLVariants(h: number, s: number, l: number) {
 import { colorHSLVariants } from '@/utils/colorUtils'
 
 export const media = {
-  pc: '@media (max-width: 1024px)'
+  pc: '@media (max-width: 1024px)',
   tablet: '@media (max-width: 768px)',
   mobile: '@media (max-width: 480px)',
 }

@@ -24,24 +24,31 @@ async function createUiFolder(projectPath) {
 async function run() {
   console.log(chalk.cyan("🔧 Iniciando criação do projeto..."));
 
-  const { projectName } = await inquirer.prompt([
-    {
-      type: "input",
-      name: "projectName",
-      message: "Digite o nome do projeto:",
-      validate: (input) =>
-        input ? true : "Nome do projeto não pode ser vazio",
-    },
-  ]);
+  const cliArgs = process.argv.slice(2);
+  let appName = cliArgs[0];
 
-  const projectPath = path.join(process.cwd(), projectName);
+  // Se não foi passado via CLI, perguntar
+  if (!appName) {
+    const response = await inquirer.prompt([
+      {
+        type: "input",
+        name: "appName",
+        message: "Digite o nome do projeto:",
+        validate: (input) =>
+          input ? true : "Nome do projeto não pode ser vazio",
+      },
+    ]);
+    appName = response.appName;
+  }
+
+  const projectPath = path.join(process.cwd(), appName);
 
   try {
     await fs.ensureDir(projectPath);
     await createUiFolder(projectPath);
     console.log(
       chalk.green(
-        `✅ Projeto '${projectName}' criado com sucesso em ${projectPath}`
+        `✅ Projeto '${appName}' criado com sucesso em ${projectPath}`
       )
     );
   } catch (err) {
@@ -49,7 +56,7 @@ async function run() {
   }
 }
 
-async function main() {
+async function main(appName) {
   console.log("🎨 RNT Next CLI - Criado por RNT");
   console.log("=====================================");
   console.log("📝 Configuração do Projeto\n");

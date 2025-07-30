@@ -1,6 +1,6 @@
 {
   "name": "rnt-next",
-  "version": "4.1.6",
+  "version": "4.1.7",
   "description": "CLI para criar aplicações Next.js com configuração completa: Styled Components/Tailwind, projeto limpo/exemplos, testes opcionais, dependências adicionais e backend com Prisma/MySQL - Criado por RNT",
   "main": "index.js",
   "scripts": {
@@ -29,7 +29,7 @@
   "license": "ISC",
   "type": "module",
   "bin": {
-    "rnt-next": "./index.js"
+    "rnt-next": "./index.mjs"
   },
   "dependencies": {
     "chalk": "^4.1.2",

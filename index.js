@@ -22,57 +22,88 @@ async function main() {
   console.log("=====================================");
   console.log("📝 Configuração do Projeto\n");
 
-  const {
-    appName,
-    packageManager,
-    finalChoice,
-    includeExamples,
-    installExtraDeps,
-    installTests,
-    installBackend,
-  } = await askQuestions();
+  const answers = await inquirer.prompt([
+    {
+      type: "list",
+      name: "cssChoice",
+      message: "1️⃣ Qual biblioteca de CSS você deseja usar?",
+      choices: ["Styled Components", "Tailwind CSS"],
+    },
+    {
+      type: "confirm",
+      name: "useEmpty",
+      message: "2️⃣ Deseja criar um projeto limpo (--empty)?",
+      default: false,
+    },
+    {
+      type: "confirm",
+      name: "installTests",
+      message: "3️⃣ Deseja instalar dependências de teste?",
+      default: true,
+    },
+    {
+      type: "confirm",
+      name: "installExtraDeps",
+      message:
+        "4️⃣ Deseja instalar pacote de dependências adicionais (Formik, iMask, etc)?",
+      default: true,
+    },
+    {
+      type: "confirm",
+      name: "installBackend",
+      message: "5️⃣ Deseja instalar ambiente backend com Prisma + MySQL?",
+      default: false,
+    },
+    {
+      type: "confirm",
+      name: "confirmConfig",
+      message: "✅ Confirma as configurações acima?",
+      default: true,
+    },
+  ]);
 
-  const projectPath = path.resolve(process.cwd(), appName);
-
-  // 🚀 Criando projeto Next.js
-  await createNextApp(appName, packageManager);
-
-  // 📁 Navegando até o projeto
-  process.chdir(projectPath);
-
-  // 🧹 Limpando projeto padrão
-  if (!includeExamples) {
-    await clearDefaultProject();
+  if (!answers.confirmConfig) {
+    console.log("❌ Operação cancelada pelo usuário.");
+    process.exit(0);
   }
 
-  // 🏗️ Criando estrutura de pastas
-  await createFolderStructure();
+  const useStyledComponents = answers.cssChoice === "Styled Components";
+  const useTailwind = !useStyledComponents;
+  const finalChoice = useStyledComponents ? "styled-components" : "tailwind";
 
-  // 🎨 Styled Components ou Tailwind
-  if (finalChoice === "styled-components") {
-    await createStyledComponentsFiles();
-  } else {
-    await createTailwindFiles();
+  console.log("\n" + "=".repeat(50));
+  console.log("📋 RESUMO DAS CONFIGURAÇÕES");
+  console.log("=".repeat(50));
+  console.log(`🎨 CSS: ${answers.cssChoice}`);
+  console.log(
+    `📦 Projeto: ${answers.useEmpty ? "Limpo (--empty)" : "Com exemplos"}`
+  );
+  console.log(`🧪 Testes: ${answers.installTests ? "Sim" : "Não"}`);
+  console.log(
+    `📚 Deps. Adicionais: ${answers.installExtraDeps ? "Sim" : "Não"}`
+  );
+  console.log(
+    `🗄️ Backend: ${answers.installBackend ? "Prisma + MySQL" : "Não"}`
+  );
+  console.log("=".repeat(50));
+
+  console.log("\n🚀 Iniciando criação do projeto...");
+  console.log("📦 Criando projeto com Next.js...");
+
+  let createCommand = `npx create-next-app@latest ${appName} --typescript --eslint --app --src-dir --import-alias "@/*"`;
+  createCommand += useTailwind ? " --tailwind" : " --no-tailwind";
+  if (answers.useEmpty) createCommand += " --empty";
+
+  execCommand(createCommand);
+
+  if (!fs.existsSync(appPath)) {
+    console.error(`❌ Erro: Diretório ${appPath} não foi criado`);
+    process.exit(1);
   }
 
-  // 📄 Adicionando arquivos extras se o usuário quiser exemplos
-  if (includeExamples) {
-    await copyExampleFiles(finalChoice);
-  }
+  process.chdir(appPath);
 
-  // ✅ Criando arquivos padrão (index.ts, layout.tsx, globals, etc.)
-  await createBaseFiles({ finalChoice });
-
-  // ✍️ Atualizando arquivos padrões como page.tsx e layout
-  await updatePagesFiles({ appName, finalChoice });
-
-  // 🌐 Criando arquivos de configuração
-  await createConfigFiles({ appName });
-
-  // 🔠 Criando types.d.ts
-  await createTypesFile();
-
-  // 📦 Instalando dependências de produção
+  // 🎯 Instalando dependências baseadas na escolha
   console.log("📦 Instalando dependências de produção...");
 
   let prodDependencies = [
@@ -108,7 +139,6 @@ async function main() {
 
   execCommand(`npm install ${prodDependencies.join(" ")} --save`);
 
-  // 📦 Instalando dependências de desenvolvimento
   console.log("📦 Instalando dependências de desenvolvimento...");
 
   let devDependencies = [
@@ -132,10 +162,6 @@ async function main() {
   }
 
   execCommand(`npm install ${devDependencies.join(" ")} --save-dev`);
-
-  console.log("\n✅ Projeto criado com sucesso!");
-  console.log(`\n👉 Acesse o projeto com: \n\n  cd ${appName}`);
-  console.log(`\n🚀 Inicie o projeto com: \n\n  ${packageManager} run dev\n`);
 
   // 🏗 Criando estrutura de pastas
   console.log("📂 Criando estrutura de pastas...");

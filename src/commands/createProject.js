@@ -78,7 +78,6 @@ export async function createProject(config) {
   // 3. Estrutura de pastas
   const folders = [
     "src/styles",
-    "src/components/ui",
     "src/lib",
     "src/hooks",
     "src/utils",
@@ -90,6 +89,12 @@ export async function createProject(config) {
     folders.push(
       "src/app/(private)",
       "src/app/(public)",
+      "src/components/ui",
+      "src/components/ui/Button",
+      "src/components/ui/CartWrapper",
+      "src/components/ui/ModalWrapper",
+      "src/components/ui/ErrorMessage",
+      "src/components/ui/MaskedInput",
       "src/components/layout",
       "src/components/layout/header",
       "src/components/layout/footer"
@@ -170,15 +175,13 @@ const nextConfig = {`;
 module.exports = nextConfig
 `;
 
-  await writeFile(path.join(appPath, "next.config.js", nextConfig));
+  await writeFile(path.join(appPath, "next.config.js"), nextConfig);
 
   // Jest config se testes foram escolhidos
   if (installTests) {
     await writeFile(
-      path.join(
-        appPath,
-        "jest.config.js",
-        `const nextJest = require('next/jest')
+      path.join(appPath, "jest.config.js"),
+      `const nextJest = require('next/jest')
 
 const createJestConfig = nextJest({
   // Provide the path to your Next.js app to load next.config.js and .env files
@@ -198,7 +201,6 @@ const customJestConfig = {
 // createJestConfig is exported this way to ensure that next/jest can load the Next.js config which is async
 module.exports = createJestConfig(customJestConfig)
 `
-      )
     );
 
     await writeFile(
@@ -211,12 +213,254 @@ module.exports = createJestConfig(customJestConfig)
     );
   }
 
+  //Cria arquivo middleware.ts na raiz do projeto
+  await writeFile(
+    path.join(appPath, "middleware.ts"),
+    `
+      import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
+
+/**
+ * Middleware para controle de autenticação e redirecionamentos
+ * 
+ * Este middleware é executado antes de cada requisição e permite:
+ * - Verificar autenticação do usuário
+ * - Redirecionar usuários não autenticados
+ * - Proteger rotas privadas
+ * - Adicionar headers customizados
+ */
+
+export function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+  
+  // Rotas que não precisam de autenticação
+  const publicPaths = [
+    '/',
+    '/login',
+    '/register',
+    '/forgot-password',
+    '/about',
+    '/contact',
+    '/terms',
+    '/privacy'
+  ];
+  
+  // Rotas da API que não precisam de autenticação
+  const publicApiPaths = [
+    '/api/auth/login',
+    '/api/auth/register',
+    '/api/auth/forgot-password',
+    '/api/public'
+  ];
+  
+  // Rotas administrativas (requerem role específico)
+  const adminPaths = [
+    '/admin',
+    '/dashboard/admin'
+  ];
+  
+  // Verificar se é uma rota pública
+  const isPublicPath = publicPaths.some(path => 
+    pathname === path || pathname.startsWith(\`\${path}/\`)
+  );
+  
+  const isPublicApiPath = publicApiPaths.some(path => 
+    pathname.startsWith(path)
+  );
+  
+  // Se for rota pública, permitir acesso
+  if (isPublicPath || isPublicApiPath) {
+    return NextResponse.next();
+  }
+  
+  // Verificar token de autenticação
+  const token = request.cookies.get('auth-token')?.value;
+  const userRole = request.cookies.get('user-role')?.value;
+  
+  // Se não há token e está tentando acessar rota privada
+  if (!token && !isPublicPath) {
+    const loginUrl = new URL('/login', request.url);
+    loginUrl.searchParams.set('redirect', pathname);
+    return NextResponse.redirect(loginUrl);
+  }
+  
+  // Verificar acesso a rotas administrativas
+  const isAdminPath = adminPaths.some(path => 
+    pathname.startsWith(path)
+  );
+  
+  if (isAdminPath && userRole !== 'admin') {
+    return NextResponse.redirect(new URL('/unauthorized', request.url));
+  }
+  
+  // Se usuário está logado e tenta acessar login/register, redirecionar para dashboard
+  if (token && (pathname === '/login' || pathname === '/register')) {
+    return NextResponse.redirect(new URL('/dashboard', request.url));
+  }
+  
+  // Adicionar headers customizados
+  const response = NextResponse.next();
+  
+  // Headers de segurança
+  response.headers.set('X-Frame-Options', 'DENY');
+  response.headers.set('X-Content-Type-Options', 'nosniff');
+  response.headers.set('Referrer-Policy', 'origin-when-cross-origin');
+  
+  // Header com informações do usuário (se autenticado)
+  if (token) {
+    response.headers.set('X-User-Authenticated', 'true');
+    if (userRole) {
+      response.headers.set('X-User-Role', userRole);
+    }
+  }
+  
+  return response;
+}
+
+// Configurar em quais rotas o middleware deve ser executado
+export const config = {
+  matcher: [
+    /*
+     * Match all request paths except for the ones starting with:
+     * - api/public (public API routes)
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     * - public folder files
+     */
+    '/((?!_next/static|_next/image|favicon.ico|public/).*)',
+  ],
+};
+
+
+    `
+  );
+
+  //Cria arquivo types.d.ts na raiz do projeto
+  await writeFile(
+    path.join(appPath, "types.d.ts"),
+    `
+      /**
+ * Arquivo de tipos globais do projeto
+ * 
+ * Adicione aqui todos os tipos TypeScript que serão utilizados
+ * em múltiplos arquivos do projeto, incluindo:
+ * 
+ * - Interfaces de API
+ * - Tipos de dados do banco
+ * - Tipos de componentes compartilhados
+ * - Tipos de estado global (Redux)
+ * - Tipos de formulários
+ * - Enums e constantes tipadas
+ */
+
+// Exemplo: Tipos de usuário
+export interface User {
+  id: string;
+  name: string;
+  email: string;
+  avatar?: string;
+  role: UserRole;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export enum UserRole {
+  ADMIN = 'admin',
+  USER = 'user',
+  MODERATOR = 'moderator'
+}
+
+// Exemplo: Tipos de API Response
+export interface ApiResponse<T = any> {
+  success: boolean;
+  data?: T;
+  message?: string;
+  errors?: string[];
+}
+
+// Exemplo: Tipos de formulário
+export interface LoginForm {
+  email: string;
+  password: string;
+  rememberMe?: boolean;
+}
+
+export interface RegisterForm {
+  name: string;
+  email: string;
+  password: string;
+  confirmPassword: string;
+}
+
+// Exemplo: Tipos de componentes
+export interface ButtonProps {
+  variant?: 'primary' | 'secondary' | 'outline' | 'ghost';
+  size?: 'sm' | 'md' | 'lg';
+  loading?: boolean;
+  disabled?: boolean;
+  children: React.ReactNode;
+  onClick?: () => void;
+}
+
+export interface ModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  title?: string;
+  children: React.ReactNode;
+  size?: 'sm' | 'md' | 'lg' | 'xl';
+}
+
+// Exemplo: Tipos de estado
+export interface AuthState {
+  user: User | null;
+  isAuthenticated: boolean;
+  isLoading: boolean;
+  error: string | null;
+}
+
+// Exemplo: Tipos de produtos (e-commerce)
+export interface Product {
+  id: string;
+  name: string;
+  description: string;
+  price: number;
+  images: string[];
+  category: string;
+  stock: number;
+  featured: boolean;
+}
+
+export interface CartItem {
+  product: Product;
+  quantity: number;
+}
+
+export interface CartState {
+  items: CartItem[];
+  total: number;
+  isOpen: boolean;
+}
+    `
+  );
+
+  //Cria arquivo useAppDispatch.ts dentro de src/hooks
+  await writeFile(
+    path.join(appPath, "src/hooks/useAppDispatch.ts"),
+    `
+      import { AppDispatch, RootState } from '@/redux/store'
+import { TypedUseSelectorHook, useDispatch, useSelector } from 'react-redux'
+
+export const useAppDispatch = () => useDispatch<AppDispatch>()
+export const useAppSelector: TypedUseSelectorHook<RootState> = useSelector
+
+    `
+  );
+
   // Criar colorUtils
   await writeFile(
-    path.join(
-      appPath,
-      "src/utils/colorUtils.ts",
-      `// 🎨 COLOR UTILS - Utilitários para geração de variantes de cores HSL
+    path.join(appPath, "src/utils/colorUtils.ts"),
+    `// 🎨 COLOR UTILS - Utilitários para geração de variantes de cores HSL
 
 export function colorHSLVariants(h: number, s: number, l: number) {
   const clamp = (val: number) => Math.min(100, Math.max(0, val))
@@ -241,15 +485,12 @@ export function colorHSLVariants(h: number, s: number, l: number) {
   }
 }
 `
-    )
   );
 
   // Theme configuration atualizado
   await writeFile(
-    path.join(
-      appPath,
-      "src/styles/theme.ts",
-      `// 🎨 ARQUIVO DE TEMA - Configurações de cores e breakpoints do projeto
+    path.join(appPath, "src/styles/theme.ts"),
+    `// 🎨 ARQUIVO DE TEMA - Configurações de cores e breakpoints do projeto
 
 import { colorHSLVariants } from '@/utils/colorUtils'
 
@@ -357,22 +598,734 @@ export const themeConfig = {
   dark: darkTheme
 }
 `
-    )
+  );
+
+  // Cria componente de Botão estilizado
+  await writeFile(
+    path.join(appPath, "src/components/ui/Button/Button.tsx"),
+    `
+      "use client";
+
+import Link from "next/link";
+import React, { forwardRef } from "react";
+import { ButtonContent, IconWrapper, StyledButton } from "./ButtonStyles";
+
+type ButtonVariants = "primary" | "secondary" | "outline" | "ghost" | "danger";
+type ButtonSizes = "sm" | "md" | "lg";
+
+type AnchorProps = React.AnchorHTMLAttributes<HTMLAnchorElement> & {
+  href: string;
+};
+
+type NativeButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
+  href?: undefined;
+};
+
+export interface CommonButtonProps {
+  variant?: ButtonVariants;
+  size?: ButtonSizes;
+  loading?: boolean;
+  fullWidth?: boolean;
+  leftIcon?: React.ReactNode;
+  rightIcon?: React.ReactNode;
+  children?: React.ReactNode;
+}
+
+export type ButtonProps = CommonButtonProps & (AnchorProps | NativeButtonProps);
+
+export const Button = forwardRef<
+  HTMLButtonElement | HTMLAnchorElement,
+  ButtonProps
+>(
+  (
+    {
+      variant = "primary",
+      size = "md",
+      loading = false,
+      fullWidth = false,
+      leftIcon,
+      rightIcon,
+      disabled,
+      children,
+      ...props
+    },
+    ref
+  ) => {
+    const isDisabled = disabled || loading;
+
+    const content = (
+      <StyledButton
+        as={(props as AnchorProps).href ? "a" : "button"}
+        ref={ref as any}
+        $variant={variant}
+        $size={size}
+        $loading={loading}
+        $fullWidth={fullWidth}
+        disabled={isDisabled}
+        aria-disabled={isDisabled}
+        {...(props as any)}
+      >
+        <ButtonContent $loading={loading}>
+          {leftIcon && <IconWrapper>{leftIcon}</IconWrapper>}
+          {children}
+          {rightIcon && <IconWrapper>{rightIcon}</IconWrapper>}
+        </ButtonContent>
+      </StyledButton>
+    );
+
+    if ((props as AnchorProps).href) {
+      return (
+        <Link href={(props as AnchorProps).href} passHref legacyBehavior>
+          {content}
+        </Link>
+      );
+    }
+
+    return content;
+  }
+);
+
+Button.displayName = "Button";
+export default Button;
+
+    `
+  );
+
+  // Cria estilos do Botão
+  await writeFile(
+    path.join(appPath, "src/components/ui/Button/ButtonStyles.ts"),
+    String.raw`
+import styled, { css } from 'styled-components';
+
+interface StyledButtonProps {
+  $variant: 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger';
+  $size: 'sm' | 'md' | 'lg';
+  $loading: boolean;
+  $fullWidth: boolean;
+}
+
+const buttonVariants = {
+  primary: css\`
+    background-color: \${({ theme }) => theme.colors.primary.base};
+    color: \${({ theme }) => theme.colors.white};
+    border: 2px solid \${({ theme }) => theme.colors.primary.base};
+    
+    &:hover:not(:disabled) {
+      background-color: \${({ theme }) => theme.colors.primary.dark};
+      border-color: \${({ theme }) => theme.colors.primary.dark};
+      transform: translateY(-1px);
+    }
+    
+    &:active:not(:disabled) {
+      background-color: \${({ theme }) => theme.colors.primary.dark20};
+      transform: translateY(0);
+    }
+  \`,
+  
+  secondary: css\`
+    background-color: \${({ theme }) => theme.colors.secondary.base};
+    color: \${({ theme }) => theme.colors.white};
+    border: 2px solid \${({ theme }) => theme.colors.secondary.base};
+    
+    &:hover:not(:disabled) {
+      background-color: \${({ theme }) => theme.colors.secondary.dark};
+      border-color: \${({ theme }) => theme.colors.secondary.dark};
+      transform: translateY(-1px);
+    }
+    
+    &:active:not(:disabled) {
+      background-color: \${({ theme }) => theme.colors.secondary.dark20};
+      transform: translateY(0);
+    }
+  \`,
+  
+  outline: css\`
+    background-color: transparent;
+    color: \${({ theme }) => theme.colors.primary.base};
+    border: 2px solid \${({ theme }) => theme.colors.primary.base};
+    
+    &:hover:not(:disabled) {
+      background-color: \${({ theme }) => theme.colors.primary.base};
+      color: \${({ theme }) => theme.colors.white};
+      transform: translateY(-1px);
+    }
+    
+    &:active:not(:disabled) {
+      background-color: \${({ theme }) => theme.colors.primary.dark};
+      transform: translateY(0);
+    }
+  \`,
+  
+  ghost: css\`
+    background-color: transparent;
+    color: \${({ theme }) => theme.colors.text.primary};
+    border: 2px solid transparent;
+    
+    &:hover:not(:disabled) {
+      background-color: \${({ theme }) => theme.colors.gray.light40};
+      transform: translateY(-1px);
+    }
+    
+    &:active:not(:disabled) {
+      background-color: \${({ theme }) => theme.colors.gray.light30};
+      transform: translateY(0);
+    }
+  \`,
+  
+  danger: css\`
+    background-color: \${({ theme }) => theme.colors.error.base};
+    color: \${({ theme }) => theme.colors.white};
+    border: 2px solid \${({ theme }) => theme.colors.error.base};
+    
+    &:hover:not(:disabled) {
+      background-color: \${({ theme }) => theme.colors.error.dark};
+      border-color: \${({ theme }) => theme.colors.error.dark};
+      transform: translateY(-1px);
+    }
+    
+    &:active:not(:disabled) {
+      background-color: \${({ theme }) => theme.colors.error.dark20};
+      transform: translateY(0);
+    }
+  \`
+};
+
+const buttonSizes = {
+  sm: css\`
+    padding: 8px 16px;
+    font-size: 14px;
+    min-height: 36px;
+  \`,
+  
+  md: css\`
+    padding: 12px 24px;
+    font-size: 16px;
+    min-height: 44px;
+  \`,
+  
+  lg: css\`
+    padding: 16px 32px;
+    font-size: 18px;
+    min-height: 52px;
+  \`
+};
+
+export const StyledButton = styled.button<StyledButtonProps>\`
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+
+  font-family: \${({ theme }) => theme.fonts.primary};
+  font-weight: 600;
+  line-height: 1;
+  text-decoration: none;
+  text-align: center;
+  white-space: nowrap;
+
+  border-radius: \${({ theme }) => theme.borderRadius.md};
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+
+  position: relative;
+  overflow: hidden;
+
+  \${({ $size }) => buttonSizes[$size]}
+  \${({ $variant }) => buttonVariants[$variant]}
+
+  \${({ $fullWidth }) => $fullWidth && css\`
+    width: 100%;
+  \`}
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none !important;
+  }
+
+  \${({ $loading }) => $loading && css\`
+    cursor: not-allowed;
+
+    &::before {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 16px;
+      height: 16px;
+      margin: -8px 0 0 -8px;
+      border: 2px solid transparent;
+      border-top: 2px solid currentColor;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  \`}
+
+  &::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.3);
+    transform: translate(-50%, -50%);
+    transition: width 0.3s, height 0.3s;
+  }
+
+  &:active:not(:disabled)::after {
+    width: 300px;
+    height: 300px;
+  }
+
+  &:focus-visible {
+    outline: 2px solid \${({ theme }) => theme.colors.primary.base};
+    outline-offset: 2px;
+  }
+
+  @media (max-width: \${({ theme }) => theme.breakpoints.sm}) {
+    \${({ $size }) => $size === 'lg' && buttonSizes.md}
+    \${({ $size }) => $size === 'md' && buttonSizes.sm}
+  }
+\`;
+
+export const ButtonContent = styled.span<{ $loading: boolean }>\`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  opacity: \${({ $loading }) => $loading ? 0 : 1};
+  transition: opacity 0.2s ease-in-out;
+\`;
+
+export const IconWrapper = styled.span\`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  svg {
+    width: 1em;
+    height: 1em;
+  }
+\`;
+`
+  );
+
+  // Cria componente de CartWrapper
+  await writeFile(
+    path.join(appPath, "src/components/ui/CartWrapper/CartWrapper.tsx"),
+    `
+    import { AnimatePresence, motion } from "framer-motion";
+import { ReactNode } from "react";
+
+type CartWrapperProps = {
+  isOpen: boolean;
+  onClose: () => void;
+  children: ReactNode;
+};
+
+export const CartWrapper = ({ isOpen, onClose, children }: CartWrapperProps) => {
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <>
+          <motion.div
+            key="cart-backdrop"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{
+              duration: 0.3,
+              ease: "easeOut",
+              opacity: {
+                duration: 0.3,
+              },
+              when: "beforeChildren",
+            }}
+            onClick={onClose}
+            style={{
+              position: "fixed",
+              top: 0,
+              left: 0,
+              width: "100vw",
+              height: "100vh",
+              backdropFilter: "blur(5px)",
+              zIndex: 99,
+            }}
+          />
+
+          <motion.aside
+            key="cart-panel"
+            initial={{ x: "100%" }}
+            animate={{ x: 0 }}
+            exit={{ x: "100%" }}
+            transition={{ duration: 0.3, ease: "easeInOut" }}
+            style={{
+              position: "fixed",
+              top: 0,
+              right: 0,
+              width: "100%",
+              height: "100vh",
+              display: "flex",
+              justifyContent: "end",
+              zIndex: 100,
+            }}
+            onClick={onClose}
+          >
+            <div onClick={(e) => e.stopPropagation()}>{children}</div>
+          </motion.aside>
+        </>
+      )}
+    </AnimatePresence>
+  );
+};
+
+  `
+  );
+
+  //cria componente de ErrorMessage
+  await writeFile(
+    path.join(appPath, "src/components/ui/ErrorMessage/ErrorMessage.tsx"),
+    `
+    import { BiSolidError } from "react-icons/bi";
+import { ErrorMessageContainer, ErrorMessageContent } from "./ErrorMessageStyles";
+
+
+type Props = {
+  message: string
+}
+
+export const ErrorMessage = ({ message }: Props) => (
+  <ErrorMessageContainer role="alert" aria-label="Mensagem de erro" className="container">
+    <ErrorMessageContent>
+      <BiSolidError />
+      {message}
+    </ErrorMessageContent>
+  </ErrorMessageContainer>
+)
+
+  `
+  );
+
+  // cria estilo do ErrorMessage
+  await writeFile(
+    path.join(appPath, "src/components/ui/ErrorMessage/ErrorMessageStyles.ts"),
+    `import { theme } from '@/styles/theme';
+import { styled } from 'styled-components';
+
+export const ErrorMessageContainer = styled.div\`\`;
+
+export const ErrorMessageContent = styled.div\`
+  padding: 1rem;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+  font-weight: 500;
+  margin: 1rem;
+  text-align: center;
+  color: \${theme.colors.baseBlue.light40};
+  background-color: \${theme.colors.baseRed.dark08};
+
+  svg {
+    font-size: 2rem;
+    margin-right: 0.5rem;
+  }
+\`;
+`
+  );
+
+  // Cria componente de MaskedInput
+  await writeFile(
+    path.join(appPath, "src/components/ui/MaskedInput/MaskedInput.tsx"),
+    `'use client';
+
+import React, { forwardRef, useEffect, useRef, useImperativeHandle } from 'react';
+import { IMask, IMaskInput } from 'react-imask';
+import styled from 'styled-components';
+
+const StyledInputWrapper = styled.div<{ $hasError: boolean; $fullWidth: boolean }>\`
+  display: \${({ $fullWidth }) => $fullWidth ? 'block' : 'inline-block'};
+  width: \${({ $fullWidth }) => $fullWidth ? '100%' : 'auto'};
+  position: relative;
+\`;
+
+const StyledInput = styled.input<{ $hasError: boolean }>\`
+  width: 100%;
+  padding: 12px 16px;
+  font-size: 16px;
+  font-family: \${({ theme }) => theme.fonts.primary};
+  line-height: 1.5;
+  
+  background-color: \${({ theme }) => theme.colors.background.secondary};
+  border: 2px solid \${({ theme, $hasError }) => 
+    $hasError ? theme.colors.error.base : theme.colors.gray.light20};
+  border-radius: \${({ theme }) => theme.borderRadius.md};
+  
+  color: \${({ theme }) => theme.colors.text.primary};
+  
+  transition: all 0.2s ease-in-out;
+  
+  &:focus {
+    outline: none;
+    border-color: \${({ theme, $hasError }) => 
+      $hasError ? theme.colors.error.base : theme.colors.primary.base};
+    box-shadow: 0 0 0 3px \${({ theme, $hasError }) => 
+      $hasError ? theme.colors.error.light40 : theme.colors.primary.light40};
+  }
+  
+  &:hover:not(:focus) {
+    border-color: \${({ theme, $hasError }) => 
+      $hasError ? theme.colors.error.dark : theme.colors.gray.base};
+  }
+  
+  &:disabled {
+    background-color: \${({ theme }) => theme.colors.gray.light50};
+    border-color: \${({ theme }) => theme.colors.gray.light30};
+    color: \${({ theme }) => theme.colors.text.disabled};
+    cursor: not-allowed;
+  }
+  
+  &::placeholder {
+    color: \${({ theme }) => theme.colors.text.placeholder};
+  }
+
+  &::-webkit-outer-spin-button,
+  &::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+
+  &[type=number] {
+    -moz-appearance: textfield;
+  }
+\`;
+
+const Label = styled.label<{ $required: boolean }>\`
+  display: block;
+  margin-bottom: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  color: \${({ theme }) => theme.colors.text.primary};
+
+  \${({ $required }) => $required && \`
+    &::after {
+      content: ' *';
+      color: \${({ theme }) => theme.colors.error.base};
+    }
+  \`}
+\`;
+
+const ErrorMessage = styled.span\`
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  color: \${({ theme }) => theme.colors.error.base};
+\`;
+
+const HelperText = styled.span\`
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  color: \${({ theme }) => theme.colors.text.secondary};
+\`;
+
+export interface MaskedInputProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'onChange'> {
+  mask: string | RegExp | Array<string | RegExp> | Function;
+  maskOptions?: any;
+  label?: string;
+  required?: boolean;
+  error?: string;
+  helperText?: string;
+  fullWidth?: boolean;
+  onChange?: (value: string, unmaskedValue: string) => void;
+  onAccept?: (value: string, mask: IMask.InputMask<any>) => void;
+  onComplete?: (value: string, mask: IMask.InputMask<any>) => void;
+}
+
+export const MaskedInput = forwardRef<HTMLInputElement, MaskedInputProps>(
+  (
+    {
+      mask,
+      maskOptions = {},
+      label,
+      required = false,
+      error,
+      helperText,
+      fullWidth = false,
+      onChange,
+      onAccept,
+      onComplete,
+      id,
+      ...props
+    },
+    ref
+  ) => {
+    const inputRef = useRef<HTMLInputElement>(null);
+    const maskRef = useRef<IMask.InputMask<any>>();
+
+    useImperativeHandle(ref, () => inputRef.current!);
+
+    const inputId = id || \`masked-input-\${Math.random().toString(36).substr(2, 9)}\`;
+    const hasError = Boolean(error);
+
+    const handleAccept = (value: string, mask: IMask.InputMask<any>) => {
+      const unmaskedValue = mask.unmaskedValue;
+      onChange?.(value, unmaskedValue);
+      onAccept?.(value, mask);
+    };
+
+    const handleComplete = (value: string, mask: IMask.InputMask<any>) => {
+      onComplete?.(value, mask);
+    };
+
+    return (
+      <StyledInputWrapper $hasError={hasError} $fullWidth={fullWidth}>
+        {label && (
+          <Label htmlFor={inputId} $required={required}>
+            {label}
+          </Label>
+        )}
+
+        <IMaskInput
+          {...props}
+          id={inputId}
+          ref={inputRef}
+          mask={mask}
+          {...maskOptions}
+          onAccept={handleAccept}
+          onComplete={handleComplete}
+          render={(ref, props) => (
+            <StyledInput
+              {...props}
+              ref={ref}
+              $hasError={hasError}
+            />
+          )}
+        />
+
+        {error && <ErrorMessage>{error}</ErrorMessage>}
+        {!error && helperText && <HelperText>{helperText}</HelperText>}
+      </StyledInputWrapper>
+    );
+  }
+);
+
+MaskedInput.displayName = 'MaskedInput';
+
+export default MaskedInput;
+
+export const commonMasks = {
+  cpf: '000.000.000-00',
+  cnpj: '00.000.000/0000-00',
+  phone: '(00) 00000-0000',
+  landline: '(00) 0000-0000',
+  cep: '00000-000',
+  date: '00/00/0000',
+  time: '00:00',
+  rg: '00.000.000-0',
+  currency: 'R$ num',
+  percentage: 'num %',
+  creditCard: '0000 0000 0000 0000',
+  cvv: '000',
+  expiryDate: '00/00'
+};
+
+export const commonMaskOptions = {
+  currency: {
+    blocks: {
+      num: {
+        mask: Number,
+        scale: 2,
+        thousandsSeparator: '.',
+        radix: ',',
+        mapToRadix: ['.'],
+        min: 0
+      }
+    }
+  },
+
+  percentage: {
+    blocks: {
+      num: {
+        mask: Number,
+        scale: 2,
+        min: 0,
+        max: 100
+      }
+    }
+  }
+};
+`
+  );
+
+  // cria componente ModalWrapper
+  await writeFile(
+    path.join(appPath, "src/components/ui/ModalWrapper/ModalWrapper.tsx"),
+    `
+      import { AnimatePresence, motion } from "framer-motion";
+import { ReactNode } from "react";
+
+type ModalWrapperProps = {
+  isOpen: boolean;
+  children: ReactNode;
+  onClose: () => void;
+};
+
+export const ModalWrapper = ({ isOpen, children, onClose }: ModalWrapperProps) => {
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div
+          key="modal"
+          initial={{ opacity: 0, y: -30 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -30 }}
+          transition={{ duration: 0.3, ease: "easeInOut" }}
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            width: "100vw",
+            height: "100vh",
+            zIndex: 100,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            backgroundColor: "rgba(0, 0, 0, 0.5)",
+            backdropFilter: "blur(5px)",
+          }}
+          onClick={onClose}
+        >
+          <div onClick={(e) => e.stopPropagation()}>
+            {children}
+          </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+};
+
+    `
   );
 
   // Criar arquivos específicos baseados na escolha
   if (finalChoice === "styled-components") {
-    await createStyledComponentsFiles();
+    await createStyledComponentsFiles(appPath);
   } else {
-    await createTailwindFiles();
+    await createTailwindFiles(appPath);
   }
 
   // Middleware
   await writeFile(
-    path.join(
-      appPath,
-      "src/middleware.ts",
-      `// 🔒 MIDDLEWARE - Controle de autenticação e rotas
+    path.join(appPath, "src/middleware.ts"),
+    `// 🔒 MIDDLEWARE - Controle de autenticação e rotas
 
 import { MiddlewareConfig, NextRequest, NextResponse } from 'next/server'
 
@@ -423,15 +1376,12 @@ export const config: MiddlewareConfig = {
   matcher: ['/((?!api|_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt).*)']
 }
 `
-    )
   );
 
   // Providers
   await writeFile(
-    path.join(
-      appPath,
-      "src/components/providers.tsx",
-      `'use client'
+    path.join(appPath, "src/components/providers.tsx"),
+    `'use client'
 
 // 🔧 PROVIDERS - Configuração de contextos globais
 
@@ -445,15 +1395,12 @@ export function Providers({ children }: { children: React.ReactNode }) {
     </Provider>
   )
 }`
-    )
   );
 
   // .env file
   await writeFile(
-    path.join(
-      appPath,
-      ".env",
-      `# 🔐 VARIÁVEIS DE AMBIENTE - Configurações do projeto
+    path.join(appPath, ".env"),
+    `# 🔐 VARIÁVEIS DE AMBIENTE - Configurações do projeto
 
 # Next.js
 NEXTAUTH_URL=http://localhost:3000
@@ -469,16 +1416,13 @@ ${
 # API Keys
 # API_KEY=your-api-key-here
 `
-    )
   );
 
   // Redux Store baseado na escolha de testes
   if (installTests) {
     await writeFile(
-      path.join(
-        appPath,
-        "src/redux/store.ts",
-        `// 🏪 REDUX STORE - Configuração do gerenciamento de estado com preloaded state para testes
+      path.join(appPath, "src/redux/store.ts"),
+      `// 🏪 REDUX STORE - Configuração do gerenciamento de estado com preloaded state para testes
 
 import { configureStore } from '@reduxjs/toolkit'
 import authReducer from './slices/authSlice'
@@ -492,15 +1436,12 @@ export const store = configureStore({
 export type RootState = ReturnType<typeof store.getState>
 export type AppDispatch = typeof store.dispatch
 `
-      )
     );
 
     // AuthSlice para testes
     await writeFile(
-      path.join(
-        appPath,
-        "src/redux/slices/authSlice.ts",
-        `// 🔐 AUTH SLICE - Gerenciamento de estado de autenticação
+      path.join(appPath, "src/redux/slices/authSlice.ts"),
+      `// 🔐 AUTH SLICE - Gerenciamento de estado de autenticação
 
 import { createSlice, PayloadAction } from '@reduxjs/toolkit'
 
@@ -548,14 +1489,11 @@ const authSlice = createSlice({
 export const { loginStart, loginSuccess, loginFailure, logout } = authSlice.actions
 export default authSlice.reducer
 `
-      )
     );
   } else {
     await writeFile(
-      path.join(
-        appPath,
-        "src/redux/store.ts",
-        `// 🏪 REDUX STORE - Configuração simples do gerenciamento de estado
+      path.join(appPath, "src/redux/store.ts"),
+      `// 🏪 REDUX STORE - Configuração simples do gerenciamento de estado
 
 import { configureStore } from '@reduxjs/toolkit'
 import authReducer from './slices/authSlice'
@@ -569,15 +1507,12 @@ export const store = configureStore({
 export type RootState = ReturnType<typeof store.getState>
 export type AppDispatch = typeof store.dispatch
 `
-      )
     );
 
     // AuthSlice simples
     await writeFile(
-      path.join(
-        appPath,
-        "src/redux/slices/authSlice.ts",
-        `// 🔐 AUTH SLICE - Gerenciamento de estado de autenticação
+      path.join(appPath, "src/redux/slices/authSlice.ts"),
+      `// 🔐 AUTH SLICE - Gerenciamento de estado de autenticação
 
 import { createSlice, PayloadAction } from '@reduxjs/toolkit'
 
@@ -613,7 +1548,6 @@ const authSlice = createSlice({
 export const { loginSuccess, logout } = authSlice.actions
 export default authSlice.reducer
 `
-      )
     );
   }
 
@@ -626,10 +1560,8 @@ export default authSlice.reducer
 
     // Schema do Prisma com comentários
     await writeFile(
-      path.join(
-        appPath,
-        "prisma/schema.prisma",
-        `// 🗄️ PRISMA SCHEMA - Configuração do banco de dados
+      path.join(appPath, "prisma/schema.prisma"),
+      `// 🗄️ PRISMA SCHEMA - Configuração do banco de dados
 // Este arquivo define a estrutura do seu banco de dados
 
 // Configuração do gerador do Prisma Client
@@ -678,15 +1610,12 @@ model User {
 //
 // 📚 DOCUMENTAÇÃO: https://www.prisma.io/docs
 `
-      )
     );
 
     // Arquivo de configuração do Prisma Client
     await writeFile(
-      path.join(
-        appPath,
-        "src/lib/prisma.ts",
-        `// 🗄️ PRISMA CLIENT - Configuração da conexão com o banco de dados
+      path.join(appPath, "src/lib/prisma.ts"),
+      `// 🗄️ PRISMA CLIENT - Configuração da conexão com o banco de dados
 
 import { PrismaClient } from '@prisma/client'
 
@@ -698,16 +1627,15 @@ export const prisma = globalForPrisma.prisma ?? new PrismaClient()
 
 if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma
 `
-      )
     );
   }
 
   // Criar layout baseado na escolha
-  await createLayout(finalChoice, useEmpty);
+  await createLayout(appPath, finalChoice, useEmpty);
 
   // Criar arquivos de exemplo se não for projeto vazio
   if (!useEmpty) {
-    await createExampleFiles(finalChoice, installTests);
+    await createExampleFiles(appPath, finalChoice, installTests, appName);
   }
 
   console.log("\n" + "=".repeat(50));
@@ -737,13 +1665,11 @@ if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma
   console.log("=".repeat(50));
 }
 
-async function createStyledComponentsFiles() {
+async function createStyledComponentsFiles(appPath) {
   // Global Styles para Styled Components atualizado
   await writeFile(
-    path.join(
-      appPath,
-      "src/styles/globalStyles.tsx",
-      `'use client'
+    path.join(appPath, "src/styles/globalStyles.tsx"),
+    `'use client'
 
 // 🎨 GLOBAL STYLES - Estilos globais com Styled Components
 
@@ -835,15 +1761,12 @@ export const MinorTextH4 = styled.h3\`
   color: \${theme.colors.baseBlue.dark30};
 \`
 `
-    )
   );
 
   // Styled Components Registry
   await writeFile(
-    path.join(
-      appPath,
-      "src/lib/styled-components-registry.tsx",
-      `'use client'
+    path.join(appPath, "src/lib/styled-components-registry.tsx"),
+    `'use client'
 
 // 🔧 STYLED COMPONENTS REGISTRY - Necessário para SSR
 
@@ -874,11 +1797,10 @@ export default function StyledComponentsRegistry({
     </StyleSheetManager>
   )
 }`
-    )
   );
 }
 
-async function createTailwindFiles() {
+async function createTailwindFiles(appPath) {
   // Verificar se o globals.css já existe e atualizar
   const globalsPath = "src/app/globals.css";
 
@@ -920,24 +1842,22 @@ html {
   }
 }
 
-async function createLayout(cssChoice, useEmpty) {
+async function createLayout(appPath, cssChoice, useEmpty) {
   if (cssChoice === "styled-components") {
     // Layout com Styled Components
     await writeFile(
-      path.join(
-        appPath,
-        "src/app/layout.tsx",
-        `import type { Metadata } from 'next'
+      path.join(appPath, "src/app/layout.tsx"),
+      `import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import StyledComponentsRegistry from '@/lib/styled-components-registry'
 import { GlobalStyles } from '@/styles/globalStyles'
 import { Providers } from '@/components/providers'${
-          !useEmpty
-            ? `
+        !useEmpty
+          ? `
 import Header from '@/components/layout/header/Header'
 import Footer from '@/components/layout/footer/Footer'`
-            : ""
-        }
+          : ""
+      }
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -972,24 +1892,21 @@ export default function RootLayout({
   )
 }
 `
-      )
     );
   } else {
     // Layout com Tailwind
     await writeFile(
-      path.join(
-        appPath,
-        "src/app/layout.tsx",
-        `import type { Metadata } from 'next'
+      path.join(appPath, "src/app/layout.tsx"),
+      `import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
 import { Providers } from '@/components/providers'${
-          !useEmpty
-            ? `
+        !useEmpty
+          ? `
 import Header from '@/components/layout/header/Header'
 import Footer from '@/components/layout/footer/Footer'`
-            : ""
-        }
+          : ""
+      }
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -1021,12 +1938,11 @@ export default function RootLayout({
   )
 }
 `
-      )
     );
   }
 }
 
-async function createExampleFiles(cssChoice, installTests) {
+async function createExampleFiles(appPath, cssChoice, installTests, appName) {
   // Criar estrutura de rotas com exemplos
   if (!fs.existsSync("src/app/(public)")) {
     fs.mkdirSync("src/app/(public)", { recursive: true });
@@ -1038,10 +1954,8 @@ async function createExampleFiles(cssChoice, installTests) {
   // Página inicial de exemplo
   if (cssChoice === "styled-components") {
     await writeFile(
-      path.join(
-        appPath,
-        "src/app/page.tsx",
-        `'use client'
+      path.join(appPath, "src/app/page.tsx"),
+      `'use client'
 
 // 🏠 PÁGINA INICIAL - Exemplo com Styled Components
 // ⚠️ ARQUIVO DELETÁVEL - Pode ser removido ao criar sua própria página
@@ -1098,14 +2012,11 @@ export default function Home() {
   )
 }
 `
-      )
     );
   } else {
     await writeFile(
-      path.join(
-        appPath,
-        "src/app/page.tsx",
-        `'use client'
+      path.join(appPath, "src/app/page.tsx"),
+      `'use client'
 
 // 🏠 PÁGINA INICIAL - Exemplo com Tailwind CSS
 // ⚠️ ARQUIVO DELETÁVEL - Pode ser removido ao criar sua própria página
@@ -1127,7 +2038,6 @@ export default function Home() {
   )
 }
 `
-      )
     );
   }
 
@@ -1135,10 +2045,8 @@ export default function Home() {
   // Página pública de exemplo
   if (cssChoice === "styled-components") {
     await writeFile(
-      path.join(
-        appPath,
-        "src/app/(public)/layout.tsx",
-        `// 🌐 LAYOUT PÚBLICO - Layout para páginas públicas
+      path.join(appPath, "src/app/(public)/layout.tsx"),
+      `// 🌐 LAYOUT PÚBLICO - Layout para páginas públicas
 // ⚠️ ARQUIVO DELETÁVEL - Pode ser removido ao criar seu próprio layout
 
 export default function PublicLayout({
@@ -1153,14 +2061,11 @@ export default function PublicLayout({
   )
 }
 `
-      )
     );
 
     await writeFile(
-      path.join(
-        appPath,
-        "src/app/(public)/loading.tsx",
-        `'use client'
+      path.join(appPath, "src/app/(public)/loading.tsx"),
+      `'use client'
 
 // ⏳ LOADING PÚBLICO - Componente de loading para páginas públicas
 // ⚠️ ARQUIVO DELETÁVEL - Pode ser removido ao criar seu próprio loading
@@ -1197,14 +2102,11 @@ export default function Loading() {
   )
 }
 `
-      )
     );
 
     await writeFile(
-      path.join(
-        appPath,
-        "src/app/(public)/not-found.tsx",
-        `'use client'
+      path.join(appPath, "src/app/(public)/not-found.tsx"),
+      `'use client'
 
 // 🚫 NOT FOUND PÚBLICO - Página 404 para rotas públicas
 // ⚠️ ARQUIVO DELETÁVEL - Pode ser removido ao criar sua própria página 404
@@ -1265,14 +2167,11 @@ export default function NotFound() {
   )
 }
 `
-      )
     );
   } else {
     await writeFile(
-      path.join(
-        appPath,
-        "src/app/(public)/layout.tsx",
-        `// 🌐 LAYOUT PÚBLICO - Layout para páginas públicas
+      path.join(appPath, "src/app/(public)/layout.tsx"),
+      `// 🌐 LAYOUT PÚBLICO - Layout para páginas públicas
 // ⚠️ ARQUIVO DELETÁVEL - Pode ser removido ao criar seu próprio layout
 
 export default function PublicLayout({
@@ -1287,14 +2186,11 @@ export default function PublicLayout({
   )
 }
 `
-      )
     );
 
     await writeFile(
-      path.join(
-        appPath,
-        "src/app/(public)/loading.tsx",
-        `// ⏳ LOADING PÚBLICO - Componente de loading para páginas públicas
+      path.join(appPath, "src/app/(public)/loading.tsx"),
+      `// ⏳ LOADING PÚBLICO - Componente de loading para páginas públicas
 // ⚠️ ARQUIVO DELETÁVEL - Pode ser removido ao criar seu próprio loading
 
 export default function Loading() {
@@ -1305,14 +2201,11 @@ export default function Loading() {
   )
 }
 `
-      )
     );
 
     await writeFile(
-      path.join(
-        appPath,
-        "src/app/(public)/not-found.tsx",
-        `// 🚫 NOT FOUND PÚBLICO - Página 404 para rotas públicas
+      path.join(appPath, "src/app/(public)/not-found.tsx"),
+      `// 🚫 NOT FOUND PÚBLICO - Página 404 para rotas públicas
 // ⚠️ ARQUIVO DELETÁVEL - Pode ser removido ao criar sua própria página 404
 
 import Link from 'next/link'
@@ -1335,16 +2228,13 @@ export default function NotFound() {
   )
 }
 `
-      )
     );
   }
 
   // Layout privado
   await writeFile(
-    path.join(
-      appPath,
-      "src/app/(private)/layout.tsx",
-      `// 🔒 LAYOUT PRIVADO - Layout para páginas privadas
+    path.join(appPath, "src/app/(private)/layout.tsx"),
+    `// 🔒 LAYOUT PRIVADO - Layout para páginas privadas
 // ⚠️ ARQUIVO DELETÁVEL - Pode ser removido ao criar seu próprio layout
 
 export default function PrivateLayout({
@@ -1359,16 +2249,13 @@ export default function PrivateLayout({
   )
 }
 `
-    )
   );
 
   // Criar Header
   if (cssChoice === "styled-components") {
     await writeFile(
-      path.join(
-        appPath,
-        "src/components/layout/header/Header.tsx",
-        `'use client'
+      path.join(appPath, "src/components/layout/header/Header.tsx"),
+      `'use client'
 
 // 🧭 HEADER COMPONENT - Cabeçalho da aplicação
 // ⚠️ ARQUIVO DELETÁVEL - Pode ser removido ao criar seu próprio header
@@ -1412,14 +2299,11 @@ const Header = () => {
 }
 
 export default Header`
-      )
     );
   } else {
     await writeFile(
-      path.join(
-        appPath,
-        "src/components/layout/header/Header.tsx",
-        `'use client'
+      path.join(appPath, "src/components/layout/header/Header.tsx"),
+      `'use client'
 
 // 🧭 HEADER COMPONENT - Cabeçalho da aplicação
 // ⚠️ ARQUIVO DELETÁVEL - Pode ser removido ao criar seu próprio header
@@ -1437,17 +2321,14 @@ const Header = () => {
 }
 
 export default Header`
-      )
     );
   }
 
   // Criar Footer
   if (cssChoice === "styled-components") {
     await writeFile(
-      path.join(
-        appPath,
-        "src/components/layout/footer/Footer.tsx",
-        `'use client'
+      path.join(appPath, "src/components/layout/footer/Footer.tsx"),
+      `'use client'
 
 // 🦶 FOOTER COMPONENT - Rodapé da aplicação
 // ⚠️ ARQUIVO DELETÁVEL - Pode ser removido ao criar seu próprio footer
@@ -1483,14 +2364,11 @@ const Footer = () => {
 }
 
 export default Footer`
-      )
     );
   } else {
     await writeFile(
-      path.join(
-        appPath,
-        "src/components/layout/footer/Footer.tsx",
-        `'use client'
+      path.join(appPath, "src/components/layout/footer/Footer.tsx"),
+      `'use client'
 
 // 🦶 FOOTER COMPONENT - Rodapé da aplicação
 // ⚠️ ARQUIVO DELETÁVEL - Pode ser removido ao criar seu próprio footer
@@ -1511,17 +2389,14 @@ const Footer = () => {
 }
 
 export default Footer`
-      )
     );
   }
 
   // Criar testes de exemplo se solicitado
   if (installTests) {
     await writeFile(
-      path.join(
-        appPath,
-        "__tests__/page.test.tsx",
-        `// 🧪 TESTE DA PÁGINA INICIAL
+      path.join(appPath, "__tests__/page.test.tsx"),
+      `// 🧪 TESTE DA PÁGINA INICIAL
 // ⚠️ ARQUIVO DELETÁVEL - Pode ser removido ao criar seus próprios testes
 
 import { render, screen } from '@testing-library/react'
@@ -1543,7 +2418,6 @@ describe('Home Page', () => {
   })
 })
 `
-      )
     );
   }
 

@@ -131,8 +131,7 @@ async function main() {
     "react-redux @reduxjs/toolkit immer redux@latest clsx class-variance-authority lucide-react";
 
   if (finalChoice === "styled-components") {
-    prodDependencies =
-      "styled-components @types/styled-components " + prodDependencies;
+    prodDependencies = "styled-components" + prodDependencies;
   }
 
   if (installExtraDeps) {

@@ -21,7 +21,7 @@ async function createUiFolder(projectPath) {
   }
 }
 
-async function main() {
+async function run() {
   console.log(chalk.cyan("🔧 Iniciando criação do projeto..."));
 
   const { projectName } = await inquirer.prompt([
@@ -1591,4 +1591,5 @@ describe('Home Page', () => {
   }
 }
 
+run().catch(console.error);
 main().catch(console.error);

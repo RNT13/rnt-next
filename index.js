@@ -3,7 +3,7 @@
 const { execSync } = require("child_process");
 const fs = require("fs");
 const path = require("path");
-const readline = require("readline");
+const inquirer = require("inquirer"); // 👈 novo
 
 const appName = process.argv[2] || "novo-app";
 const appPath = path.join(process.cwd(), appName);
@@ -17,149 +17,125 @@ const execCommand = (cmd) => {
   }
 };
 
-// Função utilitária para perguntar no terminal
-function askQuestion(query) {
-  const rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout,
-  });
-
-  return new Promise((resolve) =>
-    rl.question(query, (ans) => {
-      rl.close();
-      resolve(ans);
-    })
-  );
-}
-
 async function main() {
   console.log("🎨 RNT Next CLI - Criado por RNT");
   console.log("=====================================");
-  console.log("📝 Configuração do Projeto");
-  console.log("");
+  console.log("📝 Configuração do Projeto\n");
 
-  // 1. Pergunta sobre a escolha do CSS
-  const cssChoice = await askQuestion(
-    "1️⃣ Qual biblioteca de CSS você deseja usar?\n   1. Styled Components\n   2. Tailwind CSS\n   Escolha (1 ou 2): "
-  );
+  const {
+    appName,
+    packageManager,
+    finalChoice,
+    includeExamples,
+    installExtraDeps,
+    installTests,
+    installBackend,
+  } = await askQuestions();
 
-  // 2. Pergunta sobre projeto limpo
-  const emptyChoice = await askQuestion(
-    "\n2️⃣ Deseja criar um projeto limpo (--empty)?\n   1. Sim (projeto vazio)\n   2. Não (com exemplos)\n   Escolha (1 ou 2): "
-  );
+  const projectPath = path.resolve(process.cwd(), appName);
 
-  // 3. Pergunta sobre dependências de teste
-  const testChoice = await askQuestion(
-    "\n3️⃣ Deseja instalar dependências de teste?\n   1. Sim (Jest + Testing Library)\n   2. Não\n   Escolha (1 ou 2): "
-  );
+  // 🚀 Criando projeto Next.js
+  await createNextApp(appName, packageManager);
 
-  // 4. Pergunta sobre dependências adicionais
-  const extraDepsChoice = await askQuestion(
-    "\n4️⃣ Deseja instalar pacote de dependências adicionais?\n   1. Sim (React Hook Form, Zod, iMask, etc.)\n   2. Não (apenas essenciais)\n   Escolha (1 ou 2): "
-  );
+  // 📁 Navegando até o projeto
+  process.chdir(projectPath);
 
-  // 5. Pergunta sobre backend com Prisma
-  const backendChoice = await askQuestion(
-    "\n5️⃣ Deseja instalar ambiente backend com Prisma e MySQL?\n   1. Sim (Prisma + MySQL)\n   2. Não\n   Escolha (1 ou 2): "
-  );
-
-  // Processando escolhas
-  const useStyledComponents = cssChoice === "1";
-  const useTailwind = cssChoice === "2" || !useStyledComponents;
-  const useEmpty = emptyChoice === "1";
-  const installTests = testChoice === "1";
-  const installExtraDeps = extraDepsChoice === "1";
-  const installBackend = backendChoice === "1";
-
-  const finalChoice = useStyledComponents ? "styled-components" : "tailwind";
-
-  console.log("\n" + "=".repeat(50));
-  console.log("📋 RESUMO DAS CONFIGURAÇÕES");
-  console.log("=".repeat(50));
-  console.log(
-    `🎨 CSS: ${
-      finalChoice === "styled-components" ? "Styled Components" : "Tailwind CSS"
-    }`
-  );
-  console.log(`📦 Projeto: ${useEmpty ? "Limpo (--empty)" : "Com exemplos"}`);
-  console.log(`🧪 Testes: ${installTests ? "Sim" : "Não"}`);
-  console.log(`📚 Deps. Adicionais: ${installExtraDeps ? "Sim" : "Não"}`);
-  console.log(`🗄️ Backend: ${installBackend ? "Prisma + MySQL" : "Não"}`);
-  console.log("=".repeat(50));
-
-  const confirmChoice = await askQuestion(
-    "\n✅ Confirma as configurações acima? (1=Sim, 2=Não): "
-  );
-
-  if (confirmChoice !== "1") {
-    console.log("❌ Operação cancelada pelo usuário.");
-    process.exit(0);
+  // 🧹 Limpando projeto padrão
+  if (!includeExamples) {
+    await clearDefaultProject();
   }
 
-  console.log("\n🚀 Iniciando criação do projeto...");
+  // 🏗️ Criando estrutura de pastas
+  await createFolderStructure();
 
-  // 🚀 Criando um novo projeto com Next.js e TypeScript
-  console.log("📦 Criando projeto com Next.js...");
-
-  let createCommand = `npx create-next-app@latest ${appName} --typescript --eslint --app --src-dir --import-alias "@/*"`;
-
-  // Adicionar flags baseadas nas escolhas
-  if (useTailwind) {
-    createCommand += " --tailwind";
+  // 🎨 Styled Components ou Tailwind
+  if (finalChoice === "styled-components") {
+    await createStyledComponentsFiles();
   } else {
-    createCommand += " --no-tailwind";
+    await createTailwindFiles();
   }
 
-  if (useEmpty) {
-    createCommand += " --empty";
+  // 📄 Adicionando arquivos extras se o usuário quiser exemplos
+  if (includeExamples) {
+    await copyExampleFiles(finalChoice);
   }
 
-  execCommand(createCommand);
+  // ✅ Criando arquivos padrão (index.ts, layout.tsx, globals, etc.)
+  await createBaseFiles({ finalChoice });
 
-  // Verificar se o diretório foi criado antes de mudar para ele
-  if (!fs.existsSync(appPath)) {
-    console.error(`❌ Erro: Diretório ${appPath} não foi criado`);
-    process.exit(1);
-  }
+  // ✍️ Atualizando arquivos padrões como page.tsx e layout
+  await updatePagesFiles({ appName, finalChoice });
 
-  process.chdir(appPath);
+  // 🌐 Criando arquivos de configuração
+  await createConfigFiles({ appName });
 
-  // 🎯 Instalando dependências baseadas na escolha
+  // 🔠 Criando types.d.ts
+  await createTypesFile();
+
+  // 📦 Instalando dependências de produção
   console.log("📦 Instalando dependências de produção...");
 
-  let prodDependencies =
-    "react-redux @reduxjs/toolkit immer redux@latest clsx class-variance-authority lucide-react";
+  let prodDependencies = [
+    "react-redux",
+    "@reduxjs/toolkit",
+    "immer",
+    "redux@latest",
+    "clsx",
+    "class-variance-authority",
+    "lucide-react",
+  ];
 
   if (finalChoice === "styled-components") {
-    prodDependencies = "styled-components " + prodDependencies;
+    prodDependencies.unshift("styled-components");
   }
 
   if (installExtraDeps) {
-    prodDependencies +=
-      "formik yup imask react-imask react-hot-toast react-loading-skeleton framer-motion react-icons";
+    prodDependencies.push(
+      "formik",
+      "yup",
+      "imask",
+      "react-imask",
+      "react-hot-toast",
+      "react-loading-skeleton",
+      "framer-motion",
+      "react-icons"
+    );
   }
 
   if (installBackend) {
-    prodDependencies += " prisma @prisma/client";
+    prodDependencies.push("prisma", "@prisma/client");
   }
 
-  execCommand(`npm install ${prodDependencies} --save`);
+  execCommand(`npm install ${prodDependencies.join(" ")} --save`);
 
+  // 📦 Instalando dependências de desenvolvimento
   console.log("📦 Instalando dependências de desenvolvimento...");
 
-  let devDependencies =
-    "eslint-plugin-prettier prettier eslint-config-prettier";
+  let devDependencies = [
+    "eslint-plugin-prettier",
+    "prettier",
+    "eslint-config-prettier",
+  ];
 
   if (finalChoice === "styled-components") {
-    devDependencies += " @types/styled-components ";
+    devDependencies.push("@types/styled-components");
   }
 
   if (installTests) {
-    devDependencies +=
-      " jest @testing-library/react @testing-library/jest-dom @testing-library/user-event jest-environment-jsdom";
+    devDependencies.push(
+      "jest",
+      "@testing-library/react",
+      "@testing-library/jest-dom",
+      "@testing-library/user-event",
+      "jest-environment-jsdom"
+    );
   }
 
-  execCommand(`npm install ${devDependencies} --save-dev`);
+  execCommand(`npm install ${devDependencies.join(" ")} --save-dev`);
+
+  console.log("\n✅ Projeto criado com sucesso!");
+  console.log(`\n👉 Acesse o projeto com: \n\n  cd ${appName}`);
+  console.log(`\n🚀 Inicie o projeto com: \n\n  ${packageManager} run dev\n`);
 
   // 🏗 Criando estrutura de pastas
   console.log("📂 Criando estrutura de pastas...");

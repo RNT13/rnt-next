@@ -1,21 +1,53 @@
 #!/usr/bin/env node
 
-const { execSync } = require("child_process");
-const fs = require("fs");
-const path = require("path");
-const inquirer = require("inquirer"); // 👈 novo
+import chalk from "chalk";
+import fs from "fs-extra";
+import { default as inquirer } from "inquirer";
+import path from "path";
+import { fileURLToPath } from "url";
 
-const appName = process.argv[2] || "novo-app";
-const appPath = path.join(process.cwd(), appName);
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
-const execCommand = (cmd) => {
+async function createUiFolder(projectPath) {
+  const uiPath = path.join(projectPath, "src", "components", "ui");
+
   try {
-    execSync(cmd, { stdio: "inherit" });
-  } catch (error) {
-    console.error(`❌ Erro ao executar: ${cmd}`);
-    process.exit(1);
+    await fs.ensureDir(uiPath);
+    return uiPath;
+  } catch (err) {
+    console.error("Erro ao criar o diretório UI:", err);
+    throw err;
   }
-};
+}
+
+async function main() {
+  console.log(chalk.cyan("🔧 Iniciando criação do projeto..."));
+
+  const { projectName } = await inquirer.prompt([
+    {
+      type: "input",
+      name: "projectName",
+      message: "Digite o nome do projeto:",
+      validate: (input) =>
+        input ? true : "Nome do projeto não pode ser vazio",
+    },
+  ]);
+
+  const projectPath = path.join(process.cwd(), projectName);
+
+  try {
+    await fs.ensureDir(projectPath);
+    await createUiFolder(projectPath);
+    console.log(
+      chalk.green(
+        `✅ Projeto '${projectName}' criado com sucesso em ${projectPath}`
+      )
+    );
+  } catch (err) {
+    console.error(chalk.red("❌ Falha ao criar o projeto:"), err);
+  }
+}
 
 async function main() {
   console.log("🎨 RNT Next CLI - Criado por RNT");

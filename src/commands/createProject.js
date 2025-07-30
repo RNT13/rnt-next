@@ -1,150 +1,38 @@
-#!/usr/bin/env node
-
 import chalk from "chalk";
 import fs from "fs-extra";
-import { default as inquirer } from "inquirer";
 import path from "path";
-import { fileURLToPath } from "url";
+import { execCommand } from "../utils/execCommand.js";
+import { ensureFolders, writeFile } from "../utils/fileOps.js";
+import { installDependencies } from "../utils/installDeps.js";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+export async function createProject(config) {
+  const {
+    appName,
+    cssChoice,
+    useEmpty,
+    installTests,
+    installExtraDeps,
+    installBackend,
+  } = config;
 
-async function createUiFolder(projectPath) {
-  const uiPath = path.join(projectPath, "src", "components", "ui");
-
-  try {
-    await fs.ensureDir(uiPath);
-    return uiPath;
-  } catch (err) {
-    console.error("Erro ao criar o diretório UI:", err);
-    throw err;
-  }
-}
-
-async function run() {
-  console.log(chalk.cyan("🔧 Iniciando criação do projeto..."));
-
-  const cliArgs = process.argv.slice(2);
-  let appName = cliArgs[0];
-
-  // Se não foi passado via CLI, perguntar
-  if (!appName) {
-    const response = await inquirer.prompt([
-      {
-        type: "input",
-        name: "appName",
-        message: "Digite o nome do projeto:",
-        validate: (input) =>
-          input ? true : "Nome do projeto não pode ser vazio",
-      },
-    ]);
-    appName = response.appName;
-  }
-
-  const projectPath = path.join(process.cwd(), appName);
-
-  try {
-    await fs.ensureDir(projectPath);
-    await createUiFolder(projectPath);
-    console.log(
-      chalk.green(
-        `✅ Projeto '${appName}' criado com sucesso em ${projectPath}`
-      )
-    );
-  } catch (err) {
-    console.error(chalk.red("❌ Falha ao criar o projeto:"), err);
-  }
-}
-
-async function main(appName) {
-  console.log("🎨 RNT Next CLI - Criado por RNT");
-  console.log("=====================================");
-  console.log("📝 Configuração do Projeto\n");
-
-  const answers = await inquirer.prompt([
-    {
-      type: "list",
-      name: "cssChoice",
-      message: "1️⃣ Qual biblioteca de CSS você deseja usar?",
-      choices: ["Styled Components", "Tailwind CSS"],
-    },
-    {
-      type: "confirm",
-      name: "useEmpty",
-      message: "2️⃣ Deseja criar um projeto limpo (--empty)?",
-      default: false,
-    },
-    {
-      type: "confirm",
-      name: "installTests",
-      message: "3️⃣ Deseja instalar dependências de teste?",
-      default: true,
-    },
-    {
-      type: "confirm",
-      name: "installExtraDeps",
-      message:
-        "4️⃣ Deseja instalar pacote de dependências adicionais (Formik, iMask, etc)?",
-      default: true,
-    },
-    {
-      type: "confirm",
-      name: "installBackend",
-      message: "5️⃣ Deseja instalar ambiente backend com Prisma + MySQL?",
-      default: false,
-    },
-    {
-      type: "confirm",
-      name: "confirmConfig",
-      message: "✅ Confirma as configurações acima?",
-      default: true,
-    },
-  ]);
-
-  if (!answers.confirmConfig) {
-    console.log("❌ Operação cancelada pelo usuário.");
-    process.exit(0);
-  }
-
-  const useStyledComponents = answers.cssChoice === "Styled Components";
+  const useStyledComponents = cssChoice === "Styled Components";
   const useTailwind = !useStyledComponents;
   const finalChoice = useStyledComponents ? "styled-components" : "tailwind";
+  const appPath = path.join(process.cwd(), appName);
 
-  console.log("\n" + "=".repeat(50));
-  console.log("📋 RESUMO DAS CONFIGURAÇÕES");
-  console.log("=".repeat(50));
-  console.log(`🎨 CSS: ${answers.cssChoice}`);
-  console.log(
-    `📦 Projeto: ${answers.useEmpty ? "Limpo (--empty)" : "Com exemplos"}`
-  );
-  console.log(`🧪 Testes: ${answers.installTests ? "Sim" : "Não"}`);
-  console.log(
-    `📚 Deps. Adicionais: ${answers.installExtraDeps ? "Sim" : "Não"}`
-  );
-  console.log(
-    `🗄️ Backend: ${answers.installBackend ? "Prisma + MySQL" : "Não"}`
-  );
-  console.log("=".repeat(50));
-
-  console.log("\n🚀 Iniciando criação do projeto...");
-  console.log("📦 Criando projeto com Next.js...");
-
+  // 1. Criação do projeto Next.js
   let createCommand = `npx create-next-app@latest ${appName} --typescript --eslint --app --src-dir --import-alias "@/*"`;
   createCommand += useTailwind ? " --tailwind" : " --no-tailwind";
-  if (answers.useEmpty) createCommand += " --empty";
-
+  if (useEmpty) createCommand += " --empty";
   execCommand(createCommand);
 
   if (!fs.existsSync(appPath)) {
     console.error(`❌ Erro: Diretório ${appPath} não foi criado`);
     process.exit(1);
   }
-
   process.chdir(appPath);
 
-  // 🎯 Instalando dependências baseadas na escolha
-  console.log("📦 Instalando dependências de produção...");
-
+  // 2. Instalação de dependências
   let prodDependencies = [
     "react-redux",
     "@reduxjs/toolkit",
@@ -154,12 +42,9 @@ async function main(appName) {
     "class-variance-authority",
     "lucide-react",
   ];
-
-  if (finalChoice === "styled-components") {
+  if (finalChoice === "styled-components")
     prodDependencies.unshift("styled-components");
-  }
-
-  if (installExtraDeps) {
+  if (installExtraDeps)
     prodDependencies.push(
       "formik",
       "yup",
@@ -170,27 +55,16 @@ async function main(appName) {
       "framer-motion",
       "react-icons"
     );
-  }
-
-  if (installBackend) {
-    prodDependencies.push("prisma", "@prisma/client");
-  }
-
-  execCommand(`npm install ${prodDependencies.join(" ")} --save`);
-
-  console.log("📦 Instalando dependências de desenvolvimento...");
+  if (installBackend) prodDependencies.push("prisma", "@prisma/client");
 
   let devDependencies = [
     "eslint-plugin-prettier",
     "prettier",
     "eslint-config-prettier",
   ];
-
-  if (finalChoice === "styled-components") {
+  if (finalChoice === "styled-components")
     devDependencies.push("@types/styled-components");
-  }
-
-  if (installTests) {
+  if (installTests)
     devDependencies.push(
       "jest",
       "@testing-library/react",
@@ -198,12 +72,10 @@ async function main(appName) {
       "@testing-library/user-event",
       "jest-environment-jsdom"
     );
-  }
 
-  execCommand(`npm install ${devDependencies.join(" ")} --save-dev`);
+  installDependencies(prodDependencies, devDependencies);
 
-  // 🏗 Criando estrutura de pastas
-  console.log("📂 Criando estrutura de pastas...");
+  // 3. Estrutura de pastas
   const folders = [
     "src/styles",
     "src/components/ui",
@@ -214,8 +86,7 @@ async function main(appName) {
     "src/redux/slices",
     ".vscode",
   ];
-
-  if (!useEmpty) {
+  if (!useEmpty)
     folders.push(
       "src/app/(private)",
       "src/app/(public)",
@@ -223,26 +94,14 @@ async function main(appName) {
       "src/components/layout/header",
       "src/components/layout/footer"
     );
-  }
+  if (installTests) folders.push("__tests__", "src/__tests__");
+  if (installBackend) folders.push("prisma");
 
-  if (installTests) {
-    folders.push("__tests__", "src/__tests__");
-  }
+  await ensureFolders(appPath, folders);
 
-  if (installBackend) {
-    folders.push("prisma");
-  }
-
-  folders.forEach((folder) =>
-    fs.mkdirSync(path.join(appPath, folder), { recursive: true })
-  );
-
-  // 📝 Criando arquivos de configuração...
-  console.log("📄 Criando arquivos de configuração...");
-
-  // VSCode settings
-  fs.writeFileSync(
-    ".vscode/settings.json",
+  // 4. Criação de arquivos de configuração (exemplo)
+  await writeFile(
+    path.join(appPath, ".vscode/settings.json"),
     JSON.stringify(
       {
         "editor.formatOnSave": true,
@@ -261,9 +120,8 @@ async function main(appName) {
     )
   );
 
-  // Prettierrc settings
-  fs.writeFileSync(
-    ".prettierrc",
+  await writeFile(
+    path.join(appPath, ".prettierrc.json"),
     JSON.stringify(
       {
         trailingComma: "none",
@@ -277,19 +135,18 @@ async function main(appName) {
     )
   );
 
-  // Editorconfig settings
-  fs.writeFileSync(
-    ".editorconfig",
+  await writeFile(
+    path.join(appPath, ".editorconfig"),
     `root = true
-
-[*]
-indent_style = space
-indent_size = 2
-end_of_line = lf
-charset = utf-8
-trim_trailing_whitespace = true
-insert_final_newline = true
-`
+  
+  [*]
+  indent_style = space
+  indent_size = 2
+  end_of_line = lf
+  charset = utf-8
+  trim_trailing_whitespace = true
+  insert_final_newline = true
+  `
   );
 
   // Next.js config (sem experimental turbo)
@@ -313,13 +170,15 @@ const nextConfig = {`;
 module.exports = nextConfig
 `;
 
-  fs.writeFileSync("next.config.js", nextConfig);
+  await writeFile(path.join(appPath, "next.config.js", nextConfig));
 
   // Jest config se testes foram escolhidos
   if (installTests) {
-    fs.writeFileSync(
-      "jest.config.js",
-      `const nextJest = require('next/jest')
+    await writeFile(
+      path.join(
+        appPath,
+        "jest.config.js",
+        `const nextJest = require('next/jest')
 
 const createJestConfig = nextJest({
   // Provide the path to your Next.js app to load next.config.js and .env files
@@ -339,19 +198,25 @@ const customJestConfig = {
 // createJestConfig is exported this way to ensure that next/jest can load the Next.js config which is async
 module.exports = createJestConfig(customJestConfig)
 `
+      )
     );
 
-    fs.writeFileSync(
-      "jest.setup.js",
-      `import '@testing-library/jest-dom'
+    await writeFile(
+      path.join(
+        appPath,
+        "jest.setup.js",
+        `import '@testing-library/jest-dom'
 `
+      )
     );
   }
 
   // Criar colorUtils
-  fs.writeFileSync(
-    "src/utils/colorUtils.ts",
-    `// 🎨 COLOR UTILS - Utilitários para geração de variantes de cores HSL
+  await writeFile(
+    path.join(
+      appPath,
+      "src/utils/colorUtils.ts",
+      `// 🎨 COLOR UTILS - Utilitários para geração de variantes de cores HSL
 
 export function colorHSLVariants(h: number, s: number, l: number) {
   const clamp = (val: number) => Math.min(100, Math.max(0, val))
@@ -376,12 +241,15 @@ export function colorHSLVariants(h: number, s: number, l: number) {
   }
 }
 `
+    )
   );
 
   // Theme configuration atualizado
-  fs.writeFileSync(
-    "src/styles/theme.ts",
-    `// 🎨 ARQUIVO DE TEMA - Configurações de cores e breakpoints do projeto
+  await writeFile(
+    path.join(
+      appPath,
+      "src/styles/theme.ts",
+      `// 🎨 ARQUIVO DE TEMA - Configurações de cores e breakpoints do projeto
 
 import { colorHSLVariants } from '@/utils/colorUtils'
 
@@ -489,6 +357,7 @@ export const themeConfig = {
   dark: darkTheme
 }
 `
+    )
   );
 
   // Criar arquivos específicos baseados na escolha
@@ -499,9 +368,11 @@ export const themeConfig = {
   }
 
   // Middleware
-  fs.writeFileSync(
-    "src/middleware.ts",
-    `// 🔒 MIDDLEWARE - Controle de autenticação e rotas
+  await writeFile(
+    path.join(
+      appPath,
+      "src/middleware.ts",
+      `// 🔒 MIDDLEWARE - Controle de autenticação e rotas
 
 import { MiddlewareConfig, NextRequest, NextResponse } from 'next/server'
 
@@ -552,12 +423,15 @@ export const config: MiddlewareConfig = {
   matcher: ['/((?!api|_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt).*)']
 }
 `
+    )
   );
 
   // Providers
-  fs.writeFileSync(
-    "src/components/providers.tsx",
-    `'use client'
+  await writeFile(
+    path.join(
+      appPath,
+      "src/components/providers.tsx",
+      `'use client'
 
 // 🔧 PROVIDERS - Configuração de contextos globais
 
@@ -571,12 +445,15 @@ export function Providers({ children }: { children: React.ReactNode }) {
     </Provider>
   )
 }`
+    )
   );
 
   // .env file
-  fs.writeFileSync(
-    ".env",
-    `# 🔐 VARIÁVEIS DE AMBIENTE - Configurações do projeto
+  await writeFile(
+    path.join(
+      appPath,
+      ".env",
+      `# 🔐 VARIÁVEIS DE AMBIENTE - Configurações do projeto
 
 # Next.js
 NEXTAUTH_URL=http://localhost:3000
@@ -592,13 +469,16 @@ ${
 # API Keys
 # API_KEY=your-api-key-here
 `
+    )
   );
 
   // Redux Store baseado na escolha de testes
   if (installTests) {
-    fs.writeFileSync(
-      "src/redux/store.ts",
-      `// 🏪 REDUX STORE - Configuração do gerenciamento de estado com preloaded state para testes
+    await writeFile(
+      path.join(
+        appPath,
+        "src/redux/store.ts",
+        `// 🏪 REDUX STORE - Configuração do gerenciamento de estado com preloaded state para testes
 
 import { configureStore } from '@reduxjs/toolkit'
 import authReducer from './slices/authSlice'
@@ -612,12 +492,15 @@ export const store = configureStore({
 export type RootState = ReturnType<typeof store.getState>
 export type AppDispatch = typeof store.dispatch
 `
+      )
     );
 
     // AuthSlice para testes
-    fs.writeFileSync(
-      "src/redux/slices/authSlice.ts",
-      `// 🔐 AUTH SLICE - Gerenciamento de estado de autenticação
+    await writeFile(
+      path.join(
+        appPath,
+        "src/redux/slices/authSlice.ts",
+        `// 🔐 AUTH SLICE - Gerenciamento de estado de autenticação
 
 import { createSlice, PayloadAction } from '@reduxjs/toolkit'
 
@@ -665,11 +548,14 @@ const authSlice = createSlice({
 export const { loginStart, loginSuccess, loginFailure, logout } = authSlice.actions
 export default authSlice.reducer
 `
+      )
     );
   } else {
-    fs.writeFileSync(
-      "src/redux/store.ts",
-      `// 🏪 REDUX STORE - Configuração simples do gerenciamento de estado
+    await writeFile(
+      path.join(
+        appPath,
+        "src/redux/store.ts",
+        `// 🏪 REDUX STORE - Configuração simples do gerenciamento de estado
 
 import { configureStore } from '@reduxjs/toolkit'
 import authReducer from './slices/authSlice'
@@ -683,12 +569,15 @@ export const store = configureStore({
 export type RootState = ReturnType<typeof store.getState>
 export type AppDispatch = typeof store.dispatch
 `
+      )
     );
 
     // AuthSlice simples
-    fs.writeFileSync(
-      "src/redux/slices/authSlice.ts",
-      `// 🔐 AUTH SLICE - Gerenciamento de estado de autenticação
+    await writeFile(
+      path.join(
+        appPath,
+        "src/redux/slices/authSlice.ts",
+        `// 🔐 AUTH SLICE - Gerenciamento de estado de autenticação
 
 import { createSlice, PayloadAction } from '@reduxjs/toolkit'
 
@@ -724,6 +613,7 @@ const authSlice = createSlice({
 export const { loginSuccess, logout } = authSlice.actions
 export default authSlice.reducer
 `
+      )
     );
   }
 
@@ -735,9 +625,11 @@ export default authSlice.reducer
     execCommand("npx prisma init");
 
     // Schema do Prisma com comentários
-    fs.writeFileSync(
-      "prisma/schema.prisma",
-      `// 🗄️ PRISMA SCHEMA - Configuração do banco de dados
+    await writeFile(
+      path.join(
+        appPath,
+        "prisma/schema.prisma",
+        `// 🗄️ PRISMA SCHEMA - Configuração do banco de dados
 // Este arquivo define a estrutura do seu banco de dados
 
 // Configuração do gerador do Prisma Client
@@ -786,12 +678,15 @@ model User {
 //
 // 📚 DOCUMENTAÇÃO: https://www.prisma.io/docs
 `
+      )
     );
 
     // Arquivo de configuração do Prisma Client
-    fs.writeFileSync(
-      "src/lib/prisma.ts",
-      `// 🗄️ PRISMA CLIENT - Configuração da conexão com o banco de dados
+    await writeFile(
+      path.join(
+        appPath,
+        "src/lib/prisma.ts",
+        `// 🗄️ PRISMA CLIENT - Configuração da conexão com o banco de dados
 
 import { PrismaClient } from '@prisma/client'
 
@@ -803,6 +698,7 @@ export const prisma = globalForPrisma.prisma ?? new PrismaClient()
 
 if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma
 `
+      )
     );
   }
 
@@ -843,9 +739,11 @@ if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma
 
 async function createStyledComponentsFiles() {
   // Global Styles para Styled Components atualizado
-  fs.writeFileSync(
-    "src/styles/globalStyles.tsx",
-    `'use client'
+  await writeFile(
+    path.join(
+      appPath,
+      "src/styles/globalStyles.tsx",
+      `'use client'
 
 // 🎨 GLOBAL STYLES - Estilos globais com Styled Components
 
@@ -937,12 +835,15 @@ export const MinorTextH4 = styled.h3\`
   color: \${theme.colors.baseBlue.dark30};
 \`
 `
+    )
   );
 
   // Styled Components Registry
-  fs.writeFileSync(
-    "src/lib/styled-components-registry.tsx",
-    `'use client'
+  await writeFile(
+    path.join(
+      appPath,
+      "src/lib/styled-components-registry.tsx",
+      `'use client'
 
 // 🔧 STYLED COMPONENTS REGISTRY - Necessário para SSR
 
@@ -973,6 +874,7 @@ export default function StyledComponentsRegistry({
     </StyleSheetManager>
   )
 }`
+    )
   );
 }
 
@@ -982,7 +884,7 @@ async function createTailwindFiles() {
 
   if (fs.existsSync(globalsPath)) {
     // Ler o conteúdo existente e adicionar customizações
-    let existingContent = fs.readFileSync(globalsPath, "utf8");
+    let existingContent = await fs.readFile(globalsPath, "utf8");
 
     // Adicionar customizações se não existirem
     if (!existingContent.includes("/* RNT Custom Styles */")) {
@@ -1013,7 +915,7 @@ html {
 }
 `;
 
-      fs.writeFileSync(globalsPath, existingContent + customStyles);
+      await writeFile(globalsPath, existingContent + customStyles);
     }
   }
 }
@@ -1021,19 +923,21 @@ html {
 async function createLayout(cssChoice, useEmpty) {
   if (cssChoice === "styled-components") {
     // Layout com Styled Components
-    fs.writeFileSync(
-      "src/app/layout.tsx",
-      `import type { Metadata } from 'next'
+    await writeFile(
+      path.join(
+        appPath,
+        "src/app/layout.tsx",
+        `import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import StyledComponentsRegistry from '@/lib/styled-components-registry'
 import { GlobalStyles } from '@/styles/globalStyles'
 import { Providers } from '@/components/providers'${
-        !useEmpty
-          ? `
+          !useEmpty
+            ? `
 import Header from '@/components/layout/header/Header'
 import Footer from '@/components/layout/footer/Footer'`
-          : ""
-      }
+            : ""
+        }
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -1068,21 +972,24 @@ export default function RootLayout({
   )
 }
 `
+      )
     );
   } else {
     // Layout com Tailwind
-    fs.writeFileSync(
-      "src/app/layout.tsx",
-      `import type { Metadata } from 'next'
+    await writeFile(
+      path.join(
+        appPath,
+        "src/app/layout.tsx",
+        `import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
 import { Providers } from '@/components/providers'${
-        !useEmpty
-          ? `
+          !useEmpty
+            ? `
 import Header from '@/components/layout/header/Header'
 import Footer from '@/components/layout/footer/Footer'`
-          : ""
-      }
+            : ""
+        }
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -1114,6 +1021,7 @@ export default function RootLayout({
   )
 }
 `
+      )
     );
   }
 }
@@ -1129,9 +1037,11 @@ async function createExampleFiles(cssChoice, installTests) {
 
   // Página inicial de exemplo
   if (cssChoice === "styled-components") {
-    fs.writeFileSync(
-      "src/app/page.tsx",
-      `'use client'
+    await writeFile(
+      path.join(
+        appPath,
+        "src/app/page.tsx",
+        `'use client'
 
 // 🏠 PÁGINA INICIAL - Exemplo com Styled Components
 // ⚠️ ARQUIVO DELETÁVEL - Pode ser removido ao criar sua própria página
@@ -1188,11 +1098,14 @@ export default function Home() {
   )
 }
 `
+      )
     );
   } else {
-    fs.writeFileSync(
-      "src/app/page.tsx",
-      `'use client'
+    await writeFile(
+      path.join(
+        appPath,
+        "src/app/page.tsx",
+        `'use client'
 
 // 🏠 PÁGINA INICIAL - Exemplo com Tailwind CSS
 // ⚠️ ARQUIVO DELETÁVEL - Pode ser removido ao criar sua própria página
@@ -1214,15 +1127,18 @@ export default function Home() {
   )
 }
 `
+      )
     );
   }
 
   // Criar páginas de exemplo nas rotas
   // Página pública de exemplo
   if (cssChoice === "styled-components") {
-    fs.writeFileSync(
-      "src/app/(public)/layout.tsx",
-      `// 🌐 LAYOUT PÚBLICO - Layout para páginas públicas
+    await writeFile(
+      path.join(
+        appPath,
+        "src/app/(public)/layout.tsx",
+        `// 🌐 LAYOUT PÚBLICO - Layout para páginas públicas
 // ⚠️ ARQUIVO DELETÁVEL - Pode ser removido ao criar seu próprio layout
 
 export default function PublicLayout({
@@ -1237,11 +1153,14 @@ export default function PublicLayout({
   )
 }
 `
+      )
     );
 
-    fs.writeFileSync(
-      "src/app/(public)/loading.tsx",
-      `'use client'
+    await writeFile(
+      path.join(
+        appPath,
+        "src/app/(public)/loading.tsx",
+        `'use client'
 
 // ⏳ LOADING PÚBLICO - Componente de loading para páginas públicas
 // ⚠️ ARQUIVO DELETÁVEL - Pode ser removido ao criar seu próprio loading
@@ -1278,11 +1197,14 @@ export default function Loading() {
   )
 }
 `
+      )
     );
 
-    fs.writeFileSync(
-      "src/app/(public)/not-found.tsx",
-      `'use client'
+    await writeFile(
+      path.join(
+        appPath,
+        "src/app/(public)/not-found.tsx",
+        `'use client'
 
 // 🚫 NOT FOUND PÚBLICO - Página 404 para rotas públicas
 // ⚠️ ARQUIVO DELETÁVEL - Pode ser removido ao criar sua própria página 404
@@ -1343,11 +1265,14 @@ export default function NotFound() {
   )
 }
 `
+      )
     );
   } else {
-    fs.writeFileSync(
-      "src/app/(public)/layout.tsx",
-      `// 🌐 LAYOUT PÚBLICO - Layout para páginas públicas
+    await writeFile(
+      path.join(
+        appPath,
+        "src/app/(public)/layout.tsx",
+        `// 🌐 LAYOUT PÚBLICO - Layout para páginas públicas
 // ⚠️ ARQUIVO DELETÁVEL - Pode ser removido ao criar seu próprio layout
 
 export default function PublicLayout({
@@ -1362,11 +1287,14 @@ export default function PublicLayout({
   )
 }
 `
+      )
     );
 
-    fs.writeFileSync(
-      "src/app/(public)/loading.tsx",
-      `// ⏳ LOADING PÚBLICO - Componente de loading para páginas públicas
+    await writeFile(
+      path.join(
+        appPath,
+        "src/app/(public)/loading.tsx",
+        `// ⏳ LOADING PÚBLICO - Componente de loading para páginas públicas
 // ⚠️ ARQUIVO DELETÁVEL - Pode ser removido ao criar seu próprio loading
 
 export default function Loading() {
@@ -1377,11 +1305,14 @@ export default function Loading() {
   )
 }
 `
+      )
     );
 
-    fs.writeFileSync(
-      "src/app/(public)/not-found.tsx",
-      `// 🚫 NOT FOUND PÚBLICO - Página 404 para rotas públicas
+    await writeFile(
+      path.join(
+        appPath,
+        "src/app/(public)/not-found.tsx",
+        `// 🚫 NOT FOUND PÚBLICO - Página 404 para rotas públicas
 // ⚠️ ARQUIVO DELETÁVEL - Pode ser removido ao criar sua própria página 404
 
 import Link from 'next/link'
@@ -1404,13 +1335,16 @@ export default function NotFound() {
   )
 }
 `
+      )
     );
   }
 
   // Layout privado
-  fs.writeFileSync(
-    "src/app/(private)/layout.tsx",
-    `// 🔒 LAYOUT PRIVADO - Layout para páginas privadas
+  await writeFile(
+    path.join(
+      appPath,
+      "src/app/(private)/layout.tsx",
+      `// 🔒 LAYOUT PRIVADO - Layout para páginas privadas
 // ⚠️ ARQUIVO DELETÁVEL - Pode ser removido ao criar seu próprio layout
 
 export default function PrivateLayout({
@@ -1425,13 +1359,16 @@ export default function PrivateLayout({
   )
 }
 `
+    )
   );
 
   // Criar Header
   if (cssChoice === "styled-components") {
-    fs.writeFileSync(
-      "src/components/layout/header/Header.tsx",
-      `'use client'
+    await writeFile(
+      path.join(
+        appPath,
+        "src/components/layout/header/Header.tsx",
+        `'use client'
 
 // 🧭 HEADER COMPONENT - Cabeçalho da aplicação
 // ⚠️ ARQUIVO DELETÁVEL - Pode ser removido ao criar seu próprio header
@@ -1475,11 +1412,14 @@ const Header = () => {
 }
 
 export default Header`
+      )
     );
   } else {
-    fs.writeFileSync(
-      "src/components/layout/header/Header.tsx",
-      `'use client'
+    await writeFile(
+      path.join(
+        appPath,
+        "src/components/layout/header/Header.tsx",
+        `'use client'
 
 // 🧭 HEADER COMPONENT - Cabeçalho da aplicação
 // ⚠️ ARQUIVO DELETÁVEL - Pode ser removido ao criar seu próprio header
@@ -1497,14 +1437,17 @@ const Header = () => {
 }
 
 export default Header`
+      )
     );
   }
 
   // Criar Footer
   if (cssChoice === "styled-components") {
-    fs.writeFileSync(
-      "src/components/layout/footer/Footer.tsx",
-      `'use client'
+    await writeFile(
+      path.join(
+        appPath,
+        "src/components/layout/footer/Footer.tsx",
+        `'use client'
 
 // 🦶 FOOTER COMPONENT - Rodapé da aplicação
 // ⚠️ ARQUIVO DELETÁVEL - Pode ser removido ao criar seu próprio footer
@@ -1540,11 +1483,14 @@ const Footer = () => {
 }
 
 export default Footer`
+      )
     );
   } else {
-    fs.writeFileSync(
-      "src/components/layout/footer/Footer.tsx",
-      `'use client'
+    await writeFile(
+      path.join(
+        appPath,
+        "src/components/layout/footer/Footer.tsx",
+        `'use client'
 
 // 🦶 FOOTER COMPONENT - Rodapé da aplicação
 // ⚠️ ARQUIVO DELETÁVEL - Pode ser removido ao criar seu próprio footer
@@ -1565,14 +1511,17 @@ const Footer = () => {
 }
 
 export default Footer`
+      )
     );
   }
 
   // Criar testes de exemplo se solicitado
   if (installTests) {
-    fs.writeFileSync(
-      "__tests__/page.test.tsx",
-      `// 🧪 TESTE DA PÁGINA INICIAL
+    await writeFile(
+      path.join(
+        appPath,
+        "__tests__/page.test.tsx",
+        `// 🧪 TESTE DA PÁGINA INICIAL
 // ⚠️ ARQUIVO DELETÁVEL - Pode ser removido ao criar seus próprios testes
 
 import { render, screen } from '@testing-library/react'
@@ -1594,9 +1543,10 @@ describe('Home Page', () => {
   })
 })
 `
+      )
     );
   }
-}
 
-run().catch(console.error);
-main().catch(console.error);
+  // 5. Mensagem final
+  console.log(chalk.green(`✅ Projeto '${appName}' criado com sucesso!`));
+}

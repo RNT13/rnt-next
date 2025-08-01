@@ -53,7 +53,8 @@ export async function createProject(config) {
       "react-hot-toast",
       "react-loading-skeleton",
       "framer-motion",
-      "react-icons"
+      "react-icons",
+      "bcrypt-ts"
     );
   if (installBackend) prodDependencies.push("prisma", "@prisma/client");
 

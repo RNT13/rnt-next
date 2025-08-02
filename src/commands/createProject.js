@@ -1101,7 +1101,6 @@ export const MaskedInput = ({
     </>
   )
 }
-
     `
   );
 
@@ -1152,6 +1151,28 @@ export const ModalWrapper = ({ isOpen, children, onClose }: ModalWrapperProps) =
   );
 };
 
+    `
+  );
+
+  //cria utils de checagem de input
+  await writeFile(
+    path.join(appPath, "src/utils/maskedInputCheck.ts"),
+    `
+import { FormikProps } from 'formik'
+
+//adicione no estilo do input
+//&.error {
+//  border: 2px solid \${theme.colors.baseRed.base};
+//  background-color: \${theme.colors.baseRed.light02};
+//  }
+//
+// e adicione no componente o className={checkInputHasError('email', form) ? 'error' : ''}
+
+export const checkInputHasError = <T>(fieldName: keyof T, form: FormikProps<T>): boolean => {
+  const isTouched = fieldName in form.touched
+  const hasError = fieldName in form.errors
+  return isTouched && hasError
+}
     `
   );
 
@@ -1455,18 +1476,20 @@ model User {
     // Arquivo de configuração do Prisma Client
     await writeFile(
       path.join(appPath, "src/lib/prisma.ts"),
-      `// 🗄️ PRISMA CLIENT - Configuração da conexão com o banco de dados
+      `
+// 🗄️ PRISMA CLIENT - Configuração do Prisma Client
+import { PrismaClient } from '@/generated/prisma/client'
 
-import { PrismaClient } from '@prisma/client'
-
-const globalForPrisma = globalThis as unknown as {
-  prisma: PrismaClient | undefined
+declare global {
+  var prisma: PrismaClient | undefined
 }
 
-export const prisma = globalForPrisma.prisma ?? new PrismaClient()
+export const prisma = global.prisma ?? new PrismaClient()
 
-if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma
-`
+if (process.env.NODE_ENV !== 'production') {
+  global.prisma = prisma
+}
+      `
     );
   }
 

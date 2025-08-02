@@ -38,7 +38,7 @@ export async function promptConfig(cliArgs = []) {
       type: "confirm",
       name: "installExtraDeps",
       message:
-        "4️⃣ Deseja instalar pacote de dependências adicionais (Formik, iMask, etc)?",
+        "4️⃣ Deseja instalar pacote de dependências adicionais (react-hook-form, zod, iMask, etc)?",
       default: true,
     },
     {

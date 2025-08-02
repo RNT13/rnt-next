@@ -46,8 +46,9 @@ export async function createProject(config) {
     prodDependencies.unshift("styled-components");
   if (installExtraDeps)
     prodDependencies.push(
-      "formik",
-      "yup",
+      "react-hook-form",
+      "@hookform/resolvers",
+      "zod",
       "imask",
       "react-imask",
       "react-hot-toast",
@@ -1016,7 +1017,8 @@ export const ErrorMessage = ({ message }: Props) => (
   // cria estilo do ErrorMessage
   await writeFile(
     path.join(appPath, "src/components/ui/ErrorMessage/ErrorMessageStyles.ts"),
-    `import { theme } from '@/styles/theme';
+    `
+import { theme } from '@/styles/theme';
 import { styled } from 'styled-components';
 
 export const ErrorMessageContainer = styled.div\`\`;
@@ -1045,232 +1047,55 @@ export const ErrorMessageContent = styled.div\`
   // Cria componente de MaskedInput
   await writeFile(
     path.join(appPath, "src/components/ui/MaskedInput/MaskedInput.tsx"),
-    `'use client';
+    `
+'use client'
 
-import React, { forwardRef, useEffect, useRef, useImperativeHandle } from 'react';
-import { IMask, IMaskInput } from 'react-imask';
-import styled from 'styled-components';
+import { IMaskInput } from 'react-imask'
 
-const StyledInputWrapper = styled.div<{ $hasError: boolean; $fullWidth: boolean }>\`
-  display: \${({ $fullWidth }) => $fullWidth ? 'block' : 'inline-block'};
-  width: \${({ $fullWidth }) => $fullWidth ? '100%' : 'auto'};
-  position: relative;
-\`;
+// Exemplo de uso:
+// <MaskedInput name="cardCode"
+//   placeholder="CVV"
+//   value={form.values.cardCode}
+//   onChange={form.handleChange}
+//   onBlur={() => form.setFieldTouched('cardCode', true)}
+//   className={checkInputHasError('cardCode') ? 'error' : ''}
+//   mask={'000'}
+// />
 
-const StyledInput = styled.input<{ $hasError: boolean }>\`
-  width: 100%;
-  padding: 12px 16px;
-  font-size: 16px;
-  font-family: \${({ theme }) => theme.fonts.primary};
-  line-height: 1.5;
-  
-  background-color: \${({ theme }) => theme.colors.background.secondary};
-  border: 2px solid \${({ theme, $hasError }) => 
-    $hasError ? theme.colors.error.base : theme.colors.gray.light20};
-  border-radius: \${({ theme }) => theme.borderRadius.md};
-  
-  color: \${({ theme }) => theme.colors.text.primary};
-  
-  transition: all 0.2s ease-in-out;
-  
-  &:focus {
-    outline: none;
-    border-color: \${({ theme, $hasError }) => 
-      $hasError ? theme.colors.error.base : theme.colors.primary.base};
-    box-shadow: 0 0 0 3px \${({ theme, $hasError }) => 
-      $hasError ? theme.colors.error.light40 : theme.colors.primary.light40};
-  }
-  
-  &:hover:not(:focus) {
-    border-color: \${({ theme, $hasError }) => 
-      $hasError ? theme.colors.error.dark : theme.colors.gray.base};
-  }
-  
-  &:disabled {
-    background-color: \${({ theme }) => theme.colors.gray.light50};
-    border-color: \${({ theme }) => theme.colors.gray.light30};
-    color: \${({ theme }) => theme.colors.text.disabled};
-    cursor: not-allowed;
-  }
-  
-  &::placeholder {
-    color: \${({ theme }) => theme.colors.text.placeholder};
-  }
-
-  &::-webkit-outer-spin-button,
-  &::-webkit-inner-spin-button {
-    -webkit-appearance: none;
-    margin: 0;
-  }
-
-  &[type=number] {
-    -moz-appearance: textfield;
-  }
-\`;
-
-const Label = styled.label<{ $required: boolean }>\`
-  display: block;
-  margin-bottom: 6px;
-  font-size: 14px;
-  font-weight: 600;
-  color: \${({ theme }) => theme.colors.text.primary};
-
-  \${({ $required }) => $required && \`
-    &::after {
-      content: ' *';
-      color: \${({ theme }) => theme.colors.error.base};
-    }
-  \`}
-\`;
-
-const ErrorMessage = styled.span\`
-  display: block;
-  margin-top: 4px;
-  font-size: 12px;
-  color: \${({ theme }) => theme.colors.error.base};
-\`;
-
-const HelperText = styled.span\`
-  display: block;
-  margin-top: 4px;
-  font-size: 12px;
-  color: \${({ theme }) => theme.colors.text.secondary};
-\`;
-
-export interface MaskedInputProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'onChange'> {
-  mask: string | RegExp | Array<string | RegExp> | Function;
-  maskOptions?: any;
-  label?: string;
-  required?: boolean;
-  error?: string;
-  helperText?: string;
-  fullWidth?: boolean;
-  onChange?: (value: string, unmaskedValue: string) => void;
-  onAccept?: (value: string, mask: IMask.InputMask<any>) => void;
-  onComplete?: (value: string, mask: IMask.InputMask<any>) => void;
+type Props = {
+  name: string
+  mask: string
+  value?: string
+  onChange?: (value: string) => void
+  onBlur?: () => void
+  placeholder?: string
+  className?: string
 }
 
-export const MaskedInput = forwardRef<HTMLInputElement, MaskedInputProps>(
-  (
-    {
-      mask,
-      maskOptions = {},
-      label,
-      required = false,
-      error,
-      helperText,
-      fullWidth = false,
-      onChange,
-      onAccept,
-      onComplete,
-      id,
-      ...props
-    },
-    ref
-  ) => {
-    const inputRef = useRef<HTMLInputElement>(null);
-    const maskRef = useRef<IMask.InputMask<any>>();
 
-    useImperativeHandle(ref, () => inputRef.current!);
+export const MaskedInput = ({ name, mask, value, onChange, onBlur, placeholder, className, }: Props) => {
+  return (
+    <IMaskInput
+      id={name}
+      name={name}
+      mask={mask}
+      value={value}
+      onAccept={(val: string) => onChange?.(val)}
+      onBlur={onBlur}
+      placeholder={placeholder}
+      className={className}
+    />
+  )
+}
 
-    const inputId = id || \`masked-input-\${Math.random().toString(36).substr(2, 9)}\`;
-    const hasError = Boolean(error);
-
-    const handleAccept = (value: string, mask: IMask.InputMask<any>) => {
-      const unmaskedValue = mask.unmaskedValue;
-      onChange?.(value, unmaskedValue);
-      onAccept?.(value, mask);
-    };
-
-    const handleComplete = (value: string, mask: IMask.InputMask<any>) => {
-      onComplete?.(value, mask);
-    };
-
-    return (
-      <StyledInputWrapper $hasError={hasError} $fullWidth={fullWidth}>
-        {label && (
-          <Label htmlFor={inputId} $required={required}>
-            {label}
-          </Label>
-        )}
-
-        <IMaskInput
-          {...props}
-          id={inputId}
-          ref={inputRef}
-          mask={mask}
-          {...maskOptions}
-          onAccept={handleAccept}
-          onComplete={handleComplete}
-          render={(ref, props) => (
-            <StyledInput
-              {...props}
-              ref={ref}
-              $hasError={hasError}
-            />
-          )}
-        />
-
-        {error && <ErrorMessage>{error}</ErrorMessage>}
-        {!error && helperText && <HelperText>{helperText}</HelperText>}
-      </StyledInputWrapper>
-    );
-  }
-);
-
-MaskedInput.displayName = 'MaskedInput';
-
-export default MaskedInput;
-
-export const commonMasks = {
-  cpf: '000.000.000-00',
-  cnpj: '00.000.000/0000-00',
-  phone: '(00) 00000-0000',
-  landline: '(00) 0000-0000',
-  cep: '00000-000',
-  date: '00/00/0000',
-  time: '00:00',
-  rg: '00.000.000-0',
-  currency: 'R$ num',
-  percentage: 'num %',
-  creditCard: '0000 0000 0000 0000',
-  cvv: '000',
-  expiryDate: '00/00'
-};
-
-export const commonMaskOptions = {
-  currency: {
-    blocks: {
-      num: {
-        mask: Number,
-        scale: 2,
-        thousandsSeparator: '.',
-        radix: ',',
-        mapToRadix: ['.'],
-        min: 0
-      }
-    }
-  },
-
-  percentage: {
-    blocks: {
-      num: {
-        mask: Number,
-        scale: 2,
-        min: 0,
-        max: 100
-      }
-    }
-  }
-};
-`
+    `
   );
 
   // cria componente ModalWrapper
   await writeFile(
     path.join(appPath, "src/components/ui/ModalWrapper/ModalWrapper.tsx"),
     `
-      import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import { ReactNode } from "react";
 
 type ModalWrapperProps = {

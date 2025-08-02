@@ -46,9 +46,8 @@ export async function createProject(config) {
     prodDependencies.unshift("styled-components");
   if (installExtraDeps)
     prodDependencies.push(
-      "react-hook-form",
-      "@hookform/resolvers",
-      "zod",
+      "formik",
+      "yup",
       "imask",
       "react-imask",
       "react-hot-toast",
@@ -1048,58 +1047,46 @@ export const ErrorMessageContent = styled.div\`
   await writeFile(
     path.join(appPath, "src/components/ui/MaskedInput/MaskedInput.tsx"),
     `
-'use client'
-
-import { Control, Controller } from 'react-hook-form'
+import { useField } from 'formik'
 import { IMaskInput } from 'react-imask'
-
-//exemplo de uso:
-// <MaskedInput
-//   name="phone"
-//   control={control}
-//   mask="(00) 00000-0000"
-//   placeholder="Telefone"
-// />
 
 type MaskedInputProps = {
   name: string
-  control: Control
   mask: string
   placeholder?: string
-  defaultValue?: string
   className?: string
+  hideError?: boolean
 }
+
+//exemplo de uso
+//<MaskedInput name="cep" mask="00000-000" placeholder="Digite seu CEP"/>
 
 export const MaskedInput = ({
   name,
-  control,
   mask,
   placeholder,
-  defaultValue = '',
-  className
+  className,
+  hideError = false,
 }: MaskedInputProps) => {
+  const [field, meta, helpers] = useField(name)
+
   return (
-    <Controller
-      name={name}
-      control={control}
-      defaultValue={defaultValue}
-      render={({ field: { onChange, onBlur, value, ref } }) => (
-        <IMaskInput
-          id={name}
-          name={name}
-          mask={mask}
-          value={value}
-          onAccept={(val: string) => onChange(val)}
-          onBlur={onBlur}
-          placeholder={placeholder}
-          className={className}
-          inputRef={ref}
-        />
-      )}
-    />
+    <>
+      <IMaskInput
+        {...field}
+        mask={mask}
+        value={field.value || ''}
+        onAccept={(value: string) => helpers.setValue(value)}
+        onBlur={() => helpers.setTouched(true)}
+        placeholder={placeholder}
+        className={className}
+      />
+      {!hideError && meta.touched && meta.error ? (
+        <div style={{ color: 'red' }}>{meta.error}</div>
+      ) : null}
+    </>
   )
 }
-
 
     `
   );

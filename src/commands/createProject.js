@@ -1052,14 +1052,12 @@ import { IMaskInput } from 'react-imask'
 
 type MaskedInputProps = {
   name: string
-  mask: string
+  mask?: string
   placeholder?: string
   className?: string
   showError?: boolean
+  type?: string
 }
-
-//exemplo de uso
-//<MaskedInput name="cep" mask="00000-000" placeholder="Digite seu CEP"/>
 
 export const MaskedInput = ({
   name,
@@ -1067,23 +1065,39 @@ export const MaskedInput = ({
   placeholder,
   className,
   showError = false,
+  type = 'text'
 }: MaskedInputProps) => {
   const [field, meta, helpers] = useField(name)
 
+  const commonProps = {
+    ...field,
+    placeholder,
+    className,
+    type,
+    onBlur: () => helpers.setTouched(true),
+  }
+
   return (
     <>
-      <IMaskInput
-        {...field}
-        mask={mask}
-        value={field.value || ''}
-        onAccept={(value: string) => helpers.setValue(value)}
-        onBlur={() => helpers.setTouched(true)}
-        placeholder={placeholder}
-        className={className}
-      />
-      {showError && meta.touched && meta.error ? (
-        <div style={{ color: 'red' }}>{meta.error}</div>
-      ) : null}
+      {mask ? (
+        <IMaskInput
+          {...commonProps}
+          mask={mask}
+          value={field.value || ''}
+          onAccept={(value: string) => helpers.setValue(value)}
+        />
+      ) : (
+        <input
+          {...commonProps}
+          value={field.value || ''}
+          onChange={(e) => helpers.setValue(e.target.value)}
+        />
+      )}
+      {showError && meta.touched && meta.error && (
+        <div style={{ color: 'red', fontSize: '0.875rem', marginTop: '0.25rem' }}>
+          {meta.error}
+        </div>
+      )}
     </>
   )
 }

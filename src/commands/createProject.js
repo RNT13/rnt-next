@@ -1055,7 +1055,7 @@ type MaskedInputProps = {
   mask: string
   placeholder?: string
   className?: string
-  hideError?: boolean
+  showError?: boolean
 }
 
 //exemplo de uso
@@ -1066,7 +1066,7 @@ export const MaskedInput = ({
   mask,
   placeholder,
   className,
-  hideError = false,
+  showError = false,
 }: MaskedInputProps) => {
   const [field, meta, helpers] = useField(name)
 
@@ -1081,7 +1081,7 @@ export const MaskedInput = ({
         placeholder={placeholder}
         className={className}
       />
-      {!hideError && meta.touched && meta.error ? (
+      {showError && meta.touched && meta.error ? (
         <div style={{ color: 'red' }}>{meta.error}</div>
       ) : null}
     </>

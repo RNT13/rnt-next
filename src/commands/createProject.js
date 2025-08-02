@@ -1050,43 +1050,56 @@ export const ErrorMessageContent = styled.div\`
     `
 'use client'
 
+import { Control, Controller } from 'react-hook-form'
 import { IMaskInput } from 'react-imask'
 
-// Exemplo de uso:
-// <MaskedInput name="cardCode"
-//   placeholder="CVV"
-//   value={form.values.cardCode}
-//   onChange={form.handleChange}
-//   onBlur={() => form.setFieldTouched('cardCode', true)}
-//   className={checkInputHasError('cardCode') ? 'error' : ''}
-//   mask={'000'}
+//exemplo de uso:
+// <MaskedInput
+//   name="phone"
+//   control={control}
+//   mask="(00) 00000-0000"
+//   placeholder="Telefone"
 // />
 
-type Props = {
+type MaskedInputProps = {
   name: string
+  control: Control
   mask: string
-  value?: string
-  onChange?: (value: string) => void
-  onBlur?: () => void
   placeholder?: string
+  defaultValue?: string
   className?: string
 }
 
-
-export const MaskedInput = ({ name, mask, value, onChange, onBlur, placeholder, className, }: Props) => {
+export const MaskedInput = ({
+  name,
+  control,
+  mask,
+  placeholder,
+  defaultValue = '',
+  className
+}: MaskedInputProps) => {
   return (
-    <IMaskInput
-      id={name}
+    <Controller
       name={name}
-      mask={mask}
-      value={value}
-      onAccept={(val: string) => onChange?.(val)}
-      onBlur={onBlur}
-      placeholder={placeholder}
-      className={className}
+      control={control}
+      defaultValue={defaultValue}
+      render={({ field: { onChange, onBlur, value, ref } }) => (
+        <IMaskInput
+          id={name}
+          name={name}
+          mask={mask}
+          value={value}
+          onAccept={(val: string) => onChange(val)}
+          onBlur={onBlur}
+          placeholder={placeholder}
+          className={className}
+          inputRef={ref}
+        />
+      )}
     />
   )
 }
+
 
     `
   );

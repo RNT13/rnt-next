@@ -42,6 +42,13 @@ export async function createProject(config) {
     "class-variance-authority",
     "lucide-react",
   ];
+
+  let devDependencies = [
+    "eslint-plugin-prettier",
+    "prettier",
+    "eslint-config-prettier",
+  ];
+
   if (finalChoice === "styled-components")
     prodDependencies.unshift("styled-components");
   if (installExtraDeps)
@@ -56,13 +63,11 @@ export async function createProject(config) {
       "react-icons",
       "bcrypt-ts"
     );
-  if (installBackend) prodDependencies.push("prisma", "@prisma/client");
+  if (installBackend) {
+    prodDependencies.push("prisma", "@prisma/client", "jsonwebtoken");
+    devDependencies.push("@types/jsonwebtoken");
+  }
 
-  let devDependencies = [
-    "eslint-plugin-prettier",
-    "prettier",
-    "eslint-config-prettier",
-  ];
   if (finalChoice === "styled-components")
     devDependencies.push("@types/styled-components");
   if (installTests)

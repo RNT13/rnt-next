@@ -105,56 +105,6 @@ export async function createProject(config) {
 
   await ensureFolders(appPath, folders);
 
-  // 4. Criação de arquivos de configuração (exemplo)
-  await writeFile(
-    path.join(appPath, ".vscode/settings.json"),
-    JSON.stringify(
-      {
-        "editor.formatOnSave": true,
-        "editor.codeActionsOnSave": {
-          "source.fixAll.eslint": true,
-          "source.fixAll": true,
-        },
-        "editor.defaultFormatter": "esbenp.prettier-vscode",
-        "[typescriptreact]": {
-          "editor.defaultFormatter": "vscode.typescript-language-features",
-        },
-        "typescript.tsdk": "node_modules/typescript/lib",
-      },
-      null,
-      2
-    )
-  );
-
-  await writeFile(
-    path.join(appPath, ".prettierrc.json"),
-    JSON.stringify(
-      {
-        trailingComma: "none",
-        semi: false,
-        singleQuote: true,
-        printWidth: 150,
-        arrowParens: "avoid",
-      },
-      null,
-      2
-    )
-  );
-
-  await writeFile(
-    path.join(appPath, ".editorconfig"),
-    `root = true
-  
-  [*]
-  indent_style = space
-  indent_size = 2
-  end_of_line = lf
-  charset = utf-8
-  trim_trailing_whitespace = true
-  insert_final_newline = true
-  `
-  );
-
   // Next.js config (sem experimental turbo)
   let nextConfig = `/** @type {import('next').NextConfig} */
 const nextConfig = {`;
@@ -202,6 +152,58 @@ const customJestConfig = {
 // createJestConfig is exported this way to ensure that next/jest can load the Next.js config which is async
 module.exports = createJestConfig(customJestConfig)
 `
+    );
+
+    // 4. Criação de arquivos de configuração (exemplo)
+    await writeFile(
+      path.join(appPath, ".vscode/settings.json"),
+      JSON.stringify(
+        {
+          "editor.formatOnSave": true,
+          "editor.codeActionsOnSave": {
+            "source.fixAll.eslint": true,
+            "source.fixAll": true,
+          },
+          "editor.defaultFormatter": "esbenp.prettier-vscode",
+          "[typescriptreact]": {
+            "editor.defaultFormatter": "vscode.typescript-language-features",
+          },
+          "typescript.tsdk": "node_modules/typescript/lib",
+        },
+        null,
+        2
+      )
+    );
+
+    // Prettier
+    await writeFile(
+      path.join(appPath, ".prettierrc.json"),
+      JSON.stringify(
+        {
+          trailingComma: "none",
+          semi: false,
+          singleQuote: true,
+          printWidth: 150,
+          arrowParens: "avoid",
+        },
+        null,
+        2
+      )
+    );
+
+    // Editor config
+    await writeFile(
+      path.join(appPath, ".editorconfig"),
+      `root = true
+  
+  [*]
+  indent_style = space
+  indent_size = 2
+  end_of_line = lf
+  charset = utf-8
+  trim_trailing_whitespace = true
+  insert_final_newline = true
+  `
     );
 
     await writeFile(
@@ -332,8 +334,6 @@ export const config = {
     '/((?!_next/static|_next/image|favicon.ico|public/).*)',
   ],
 };
-
-
     `
   );
 
@@ -1176,68 +1176,41 @@ export const checkInputHasError = <T>(fieldName: keyof T, form: FormikProps<T>):
     `
   );
 
+  //cria o arquivo inicial do eslint.config.mjs
+  await writeFile(
+    path.join(appPath, ".eslintrc.mjs"),
+    `
+import { FlatCompat } from '@eslint/eslintrc'
+import { dirname } from 'path'
+import { fileURLToPath } from 'url'
+
+//manter este arquivo e remover o arquivo eslint.config criado pelo create-next-app
+
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = dirname(__filename)
+
+const compat = new FlatCompat({
+  baseDirectory: __dirname
+})
+
+const config = [
+  {
+    ignores: ['src/generated/**']
+  },
+  ...compat.extends('next/core-web-vitals', 'next/typescript')
+]
+
+export default config
+
+    `
+  );
+
   // Criar arquivos específicos baseados na escolha
   if (finalChoice === "styled-components") {
     await createStyledComponentsFiles(appPath);
   } else {
     await createTailwindFiles(appPath);
   }
-
-  // Middleware
-  await writeFile(
-    path.join(appPath, "src/middleware.ts"),
-    `// 🔒 MIDDLEWARE - Controle de autenticação e rotas
-
-import { MiddlewareConfig, NextRequest, NextResponse } from 'next/server'
-
-const publicRoutes = [
-  { path: '/', whenAuthenticated: 'next' },
-  { path: '/sign-in', whenAuthenticated: 'redirect' },
-  { path: '/register', whenAuthenticated: 'redirect' },
-  { path: '/pricing', whenAuthenticated: 'next' }
-] as const
-
-const REDIRECT_WHEN_NOT_AUTHENTICATED_ROUTE = '/sign-in'
-
-export function middleware(request: NextRequest) {
-  const path = request.nextUrl.pathname
-  const matchedPublicRoute = publicRoutes.find(route => route.path === path)
-  const authToken = request.cookies.get('token')
-
-  //1 - Se o usuário não estiver autenticado e o caminho da rota não for público, redireciona para a página de login
-  if (!authToken && matchedPublicRoute) {
-    return NextResponse.next()
-  }
-
-  //2 - se o usuario não estiver autenticado e o caminho da rota não for público, redireciona para a página de login
-  if (!authToken && !matchedPublicRoute) {
-    const redirectUrl = request.nextUrl.clone()
-    redirectUrl.pathname = REDIRECT_WHEN_NOT_AUTHENTICATED_ROUTE
-    return NextResponse.redirect(redirectUrl)
-  }
-
-  //3 - Se o usuário estiver autenticado e o caminho da rota não for público, redireciona para a página inicial
-  if (authToken && matchedPublicRoute?.whenAuthenticated === 'redirect') {
-    const redirectUrl = request.nextUrl.clone()
-    redirectUrl.pathname = '/'
-    return NextResponse.redirect(redirectUrl)
-  }
-
-  return NextResponse.next()
-}
-
-export const config: MiddlewareConfig = {
-  /*
-   * Match all request paths except for the ones starting with:
-   * - api (API routes)
-   * - _next/static (static files)
-   * - _next/image (image optimization files)
-   * - favicon.ico, sitemap.xml, robots.txt (metadata files)
-   */
-  matcher: ['/((?!api|_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt).*)']
-}
-`
-  );
 
   // Providers
   await writeFile(

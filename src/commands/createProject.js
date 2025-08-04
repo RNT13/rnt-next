@@ -1054,6 +1054,7 @@ export const ErrorMessageContent = styled.div\`
     `
 import { useField } from 'formik'
 import { IMaskInput } from 'react-imask'
+import { MaskedInputContainer } from './MaskedInputStyles'
 
 type MaskedInputProps = {
   name: string
@@ -1062,16 +1063,10 @@ type MaskedInputProps = {
   className?: string
   showError?: boolean
   type?: string
+  id?: string
 }
 
-export const MaskedInput = ({
-  name,
-  mask,
-  placeholder,
-  className,
-  showError = false,
-  type = 'text'
-}: MaskedInputProps) => {
+export const MaskedInput = ({ name, mask, placeholder, className, showError = false, type = 'text', id }: MaskedInputProps) => {
   const [field, meta, helpers] = useField(name)
 
   const commonProps = {
@@ -1079,11 +1074,12 @@ export const MaskedInput = ({
     placeholder,
     className,
     type,
+    id,
     onBlur: () => helpers.setTouched(true),
   }
 
   return (
-    <>
+    <MaskedInputContainer>
       {mask ? (
         <IMaskInput
           {...commonProps}
@@ -1103,9 +1099,41 @@ export const MaskedInput = ({
           {meta.error}
         </div>
       )}
-    </>
+    </MaskedInputContainer>
   )
 }
+
+    `
+  );
+
+  // criar estilo do MaskedInput
+  await writeFile(
+    path.join(appPath, "src/components/ui/MaskedInput/MaskedInputStyles.ts"),
+    `
+import { theme } from '@/styles/theme'
+import { styled } from 'styled-components'
+
+export const MaskedInputContainer = styled.div\`
+  width: 100%;
+  input {
+    padding: 8px;
+    width: 100%;
+    height: 40px;
+    border-radius: 8px;
+    border: 2px solid \${theme.colors.baseBlue.light20};
+
+    &:focus {
+      outline: none;
+      border: 2px solid \${theme.colors.baseBlue.dark};
+    }
+
+    &.error {
+      border: 2px solid \${theme.colors.baseRed.base};
+      background-color: \${theme.colors.baseRed.light02};
+    }
+  }
+\`
+
     `
   );
 
@@ -1164,14 +1192,6 @@ export const ModalWrapper = ({ isOpen, children, onClose }: ModalWrapperProps) =
     path.join(appPath, "src/utils/maskedInputCheck.ts"),
     `
 import { FormikProps } from 'formik'
-
-//adicione no estilo do input
-//&.error {
-//  border: 2px solid \${theme.colors.baseRed.base};
-//  background-color: \${theme.colors.baseRed.light02};
-//  }
-//
-// e adicione no componente o className={checkInputHasError('email', form) ? 'error' : ''}
 
 export const checkInputHasError = <T>(fieldName: keyof T, form: FormikProps<T>): boolean => {
   const isTouched = fieldName in form.touched

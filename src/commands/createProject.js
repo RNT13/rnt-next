@@ -60,12 +60,20 @@ export async function createProject(config) {
       "react-hot-toast",
       "react-loading-skeleton",
       "framer-motion",
-      "react-icons",
-      "bcrypt-ts"
+      "react-icons"
     );
   if (installBackend) {
-    prodDependencies.push("prisma", "@prisma/client", "jsonwebtoken");
-    devDependencies.push("@types/jsonwebtoken");
+    prodDependencies.push(
+      "prisma",
+      "@prisma/client",
+      "jsonwebtoken",
+      "bcryptjs"
+    );
+    devDependencies.push(
+      "@types/jsonwebtoken",
+      "@types/bcrypt-ts",
+      "@types/cookie"
+    );
   }
 
   if (finalChoice === "styled-components")
@@ -106,7 +114,16 @@ export async function createProject(config) {
       "src/components/layout/footer"
     );
   if (installTests) folders.push("__tests__", "src/__tests__");
-  if (installBackend) folders.push("prisma");
+  if (installBackend)
+    folders.push(
+      "prisma",
+      "src/app/api",
+      "src/app/api/auth/login",
+      "src/app/api/auth/signup",
+      "src/app/api/auth/logout",
+      "src/app/api/auth/verify",
+      "src/app/api/users"
+    );
 
   await ensureFolders(appPath, folders);
 
@@ -220,127 +237,6 @@ module.exports = createJestConfig(customJestConfig)
       )
     );
   }
-
-  //Cria arquivo middleware.ts na raiz do projeto
-  await writeFile(
-    path.join(appPath, "middleware.ts"),
-    `
-      import { NextResponse } from 'next/server';
-import type { NextRequest } from 'next/server';
-
-/**
- * Middleware para controle de autenticação e redirecionamentos
- * 
- * Este middleware é executado antes de cada requisição e permite:
- * - Verificar autenticação do usuário
- * - Redirecionar usuários não autenticados
- * - Proteger rotas privadas
- * - Adicionar headers customizados
- */
-
-export function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl;
-  
-  // Rotas que não precisam de autenticação
-  const publicPaths = [
-    '/',
-    '/login',
-    '/register',
-    '/forgot-password',
-    '/about',
-    '/contact',
-    '/terms',
-    '/privacy'
-  ];
-  
-  // Rotas da API que não precisam de autenticação
-  const publicApiPaths = [
-    '/api/auth/login',
-    '/api/auth/register',
-    '/api/auth/forgot-password',
-    '/api/public'
-  ];
-  
-  // Rotas administrativas (requerem role específico)
-  const adminPaths = [
-    '/admin',
-    '/dashboard/admin'
-  ];
-  
-  // Verificar se é uma rota pública
-  const isPublicPath = publicPaths.some(path => 
-    pathname === path || pathname.startsWith(\`\${path}/\`)
-  );
-  
-  const isPublicApiPath = publicApiPaths.some(path => 
-    pathname.startsWith(path)
-  );
-  
-  // Se for rota pública, permitir acesso
-  if (isPublicPath || isPublicApiPath) {
-    return NextResponse.next();
-  }
-  
-  // Verificar token de autenticação
-  const token = request.cookies.get('auth-token')?.value;
-  const userRole = request.cookies.get('user-role')?.value;
-  
-  // Se não há token e está tentando acessar rota privada
-  if (!token && !isPublicPath) {
-    const loginUrl = new URL('/login', request.url);
-    loginUrl.searchParams.set('redirect', pathname);
-    return NextResponse.redirect(loginUrl);
-  }
-  
-  // Verificar acesso a rotas administrativas
-  const isAdminPath = adminPaths.some(path => 
-    pathname.startsWith(path)
-  );
-  
-  if (isAdminPath && userRole !== 'admin') {
-    return NextResponse.redirect(new URL('/unauthorized', request.url));
-  }
-  
-  // Se usuário está logado e tenta acessar login/register, redirecionar para dashboard
-  if (token && (pathname === '/login' || pathname === '/register')) {
-    return NextResponse.redirect(new URL('/dashboard', request.url));
-  }
-  
-  // Adicionar headers customizados
-  const response = NextResponse.next();
-  
-  // Headers de segurança
-  response.headers.set('X-Frame-Options', 'DENY');
-  response.headers.set('X-Content-Type-Options', 'nosniff');
-  response.headers.set('Referrer-Policy', 'origin-when-cross-origin');
-  
-  // Header com informações do usuário (se autenticado)
-  if (token) {
-    response.headers.set('X-User-Authenticated', 'true');
-    if (userRole) {
-      response.headers.set('X-User-Role', userRole);
-    }
-  }
-  
-  return response;
-}
-
-// Configurar em quais rotas o middleware deve ser executado
-export const config = {
-  matcher: [
-    /*
-     * Match all request paths except for the ones starting with:
-     * - api/public (public API routes)
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     * - public folder files
-     */
-    '/((?!_next/static|_next/image|favicon.ico|public/).*)',
-  ],
-};
-    `
-  );
 
   //Cria arquivo types.d.ts na raiz do projeto
   await writeFile(
@@ -1240,41 +1136,23 @@ export default config
   // Providers
   await writeFile(
     path.join(appPath, "src/components/providers.tsx"),
-    `'use client'
+    `
+'use client'
 
-// 🔧 PROVIDERS - Configuração de contextos globais
-
-import { Provider } from 'react-redux'
 import { store } from '@/redux/store'
+import { ReactNode } from 'react'
+import { Provider } from 'react-redux'
+import { AuthProvider } from './ui/AuthProvider/AuthProvider'
 
-export function Providers({ children }: { children: React.ReactNode }) {
+export function Providers({ children }: { children: ReactNode }) {
   return (
     <Provider store={store}>
+      <AuthProvider />
       {children}
     </Provider>
   )
-}`
-  );
-
-  // .env file
-  await writeFile(
-    path.join(appPath, ".env"),
-    `# 🔐 VARIÁVEIS DE AMBIENTE - Configurações do projeto
-
-# Next.js
-NEXTAUTH_URL=http://localhost:3000
-NEXTAUTH_SECRET=your-secret-key-here
-
-# Database (se backend foi escolhido)
-${
-  installBackend
-    ? `DATABASE_URL="mysql://username:password@localhost:3306/database_name"`
-    : `# DATABASE_URL="mysql://username:password@localhost:3306/database_name"`
 }
-
-# API Keys
-# API_KEY=your-api-key-here
-`
+  `
   );
 
   // Redux Store baseado na escolha de testes
@@ -1494,6 +1372,261 @@ export const prisma =
 if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma
 
       `
+    );
+
+    //cria o componente AuthProvider
+    await writeFile(
+      path.join(appPath, "src/components/providers/AuthProvider.tsx"),
+      `
+'use client'
+
+import { useAppDispatch } from '@/hooks/useAppDispatch'
+import { login, logout } from '@/redux/slices/authSlice'
+import { useEffect } from 'react'
+
+export function AuthProvider() {
+  const dispatch = useAppDispatch()
+
+  useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        const res = await fetch('/api/auth/verify', {
+          credentials: 'include'
+        })
+
+        if (res.ok) {
+          const data = await res.json()
+          dispatch(login(data))
+        } else {
+          dispatch(logout())
+        }
+      } catch {
+        dispatch(logout())
+      }
+    }
+
+    fetchUser()
+  }, [dispatch])
+
+  return null
+}
+
+    `
+    );
+
+    //Cria arquivo middleware.ts na raiz do projeto
+    await writeFile(
+      path.join(appPath, "middleware.ts"),
+      `
+import jwt from 'jsonwebtoken'
+import { NextRequest, NextResponse } from 'next/server'
+
+const publicRoutes = ['/', '/sign-in', '/register', '/pricing', '/allGames', '/gameDetails', '/checkout']
+
+const JWT_SECRET = process.env.JWT_SECRET!
+const REDIRECT_WHEN_NOT_AUTHENTICATED = '/sign-in'
+
+function redirectTo(path: string, request: NextRequest) {
+  const url = request.nextUrl.clone()
+  url.pathname = path
+  return NextResponse.redirect(url)
+}
+
+export function middleware(request: NextRequest) {
+  const path = request.nextUrl.pathname
+  const isPublic = publicRoutes.includes(path)
+  const token = request.cookies.get('token')?.value
+
+  let isAuthenticated = false
+
+  if (token) {
+    try {
+      jwt.verify(token, JWT_SECRET)
+      isAuthenticated = true
+    } catch (err) {
+      console.error('Token inválido:', err)
+    }
+  }
+
+  if (!isAuthenticated && !isPublic) {
+    return redirectTo(REDIRECT_WHEN_NOT_AUTHENTICATED, request)
+  }
+
+  if (isAuthenticated && (path === '/sign-in' || path === '/register')) {
+    return redirectTo('/', request)
+  }
+
+  return NextResponse.next()
+}
+
+export const config = {
+  matcher: ['/((?!_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt|api/).*)']
+}
+    `
+    );
+
+    // .env file
+    await writeFile(
+      path.join(appPath, ".env"),
+      `
+DATABASE_URL="prisma+postgres://accelerate.prisma-data.net/?api_key=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqd3RfaWQiOjEsInNlY3VyZV9rZXkiOiJza19ybXBkcEV4N0R6MG9RYllRNDlCdUMiLCJhcGlfa2V5IjoiMDFLMVJIUzk0NEozMTFaQVNUSFdETldTSjkiLCJ0ZW5hbnRfaWQiOiJjNTQ5MTU4ZmQ3NGJkNTFmNjc5OGUwOTZjOWIxOThkNjIwZmMwYTU1NjU1MTEyMWFkMTUzYzc0NmQ1OGQyZGYzIiwiaW50ZXJuYWxfc2VjcmV0IjoiM2UyNWZiMzAtZDZkNS00ZWE0LTg5NjEtZjkwNDQ0NjZjZjUxIn0.EYn7alhEwVNOUCH5nAq4NiUKNOi0CUIyT0iBHORaHEc"
+
+JWT_SECRET=alguma-coisa-bem-secreta
+
+
+    `
+    );
+
+    // cria o arquivo src/app/api/auth/login/route.ts
+    await writeFile(
+      path.join(appPath, "src/app/api/auth/login/route.ts"),
+      `
+import { prisma } from '@/utils/prisma'
+import bcrypt from 'bcryptjs'
+import { serialize } from 'cookie'
+import jwt from 'jsonwebtoken'
+import { NextResponse } from 'next/server'
+
+export async function POST(req: Request) {
+  try {
+    const { email, password } = await req.json()
+
+    const user = await prisma.user.findUnique({ where: { email } })
+
+    if (!user) {
+      return NextResponse.json({ message: 'Credenciais inválidas' }, { status: 401 })
+    }
+
+    const passwordMatch = await bcrypt.compare(password, user.password)
+
+    if (!passwordMatch) {
+      return NextResponse.json({ message: 'Credenciais inválidas' }, { status: 401 })
+    }
+
+    const token = jwt.sign({ id: user.id, name: user.name, email: user.email }, process.env.JWT_SECRET!, { expiresIn: '7d' })
+
+    const serialized = serialize('token', token, {
+      secure: process.env.NODE_ENV === 'production',
+      httpOnly: true,
+      sameSite: 'lax',
+      path: '/',
+      maxAge: 60 * 60 * 24 * 7 // 7 dias
+    })
+
+    const response = new NextResponse(JSON.stringify({ message: 'Login bem-sucedido', user }), {
+      status: 200
+    })
+
+    response.headers.set('Set-Cookie', serialized)
+
+    return response
+  } catch (error) {
+    console.error('Erro no login:', error)
+    return NextResponse.json({ message: 'Erro interno no servidor' }, { status: 500 })
+  }
+}
+
+    `
+    );
+
+    // cria o arquivo src/app/api/auth/logout/route.ts
+    await writeFile(
+      path.join(appPath, "src/app/api/auth/logout/route.ts"),
+      `
+import { serialize } from 'cookie'
+import { NextResponse } from 'next/server'
+
+export async function POST() {
+  const response = NextResponse.json({ success: true })
+  response.headers.set(
+    'Set-Cookie',
+    serialize('token', '', {
+      secure: process.env.NODE_ENV === 'production',
+      httpOnly: true,
+      sameSite: 'lax',
+      path: '/',
+      maxAge: 60 * 60 * 24 * 7 // 7 dias
+    })
+  )
+  return response
+}
+
+    `
+    );
+
+    // cria o arquivo src/app/api/auth/register/route.ts
+    await writeFile(
+      path.join(appPath, "src/app/api/auth/register/route.ts"),
+      `
+import { prisma } from '@/utils/prisma'
+import jwt from 'jsonwebtoken'
+import { NextRequest, NextResponse } from 'next/server'
+
+export async function GET(req: NextRequest) {
+  try {
+    const token = req.cookies.get('token')?.value
+
+    if (!token) {
+      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 })
+    }
+
+    const secret = process.env.JWT_SECRET!
+    const decoded = jwt.verify(token, secret) as { id: number }
+
+    const user = await prisma.user.findUnique({
+      where: { id: decoded.id },
+      select: { id: true, name: true, email: true }
+    })
+
+    if (!user) {
+      return NextResponse.json({ message: 'User not found' }, { status: 404 })
+    }
+
+    return NextResponse.json(user, { status: 200 })
+  } catch (error) {
+    console.error('Erro na verificação do token:', error)
+    return NextResponse.json({ message: 'Invalid token' }, { status: 401 })
+  }
+}
+    `
+    );
+
+    // cria o arquivo src/app/api/auth/verify/route.ts
+    await writeFile(
+      path.join(appPath, "src/app/api/auth/verify/route.ts"),
+      `
+import { prisma } from '@/utils/prisma'
+import jwt from 'jsonwebtoken'
+import { NextRequest, NextResponse } from 'next/server'
+
+export async function GET(req: NextRequest) {
+  try {
+    const token = req.cookies.get('token')?.value
+
+    if (!token) {
+      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 })
+    }
+
+    const secret = process.env.JWT_SECRET!
+    const decoded = jwt.verify(token, secret) as { id: number }
+
+    const user = await prisma.user.findUnique({
+      where: { id: decoded.id },
+      select: { id: true, name: true, email: true }
+    })
+
+    if (!user) {
+      return NextResponse.json({ message: 'User not found' }, { status: 404 })
+    }
+
+    return NextResponse.json(user, { status: 200 })
+  } catch (error) {
+    console.error('Erro na verificação do token:', error)
+    return NextResponse.json({ message: 'Invalid token' }, { status: 401 })
+  }
+}
+
+    `
     );
   }
 

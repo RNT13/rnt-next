@@ -980,13 +980,13 @@ export const MaskedInput = ({ name, mask, placeholder, className, showError = fa
         <IMaskInput
           {...commonProps}
           mask={mask}
-          value={field.value || ''}
+          value={String(field.value ?? '')}
           onAccept={(value: string) => helpers.setValue(value)}
         />
       ) : (
         <input
           {...commonProps}
-          value={field.value || ''}
+          value={String(field.value ?? '')}
           onChange={(e) => helpers.setValue(e.target.value)}
         />
       )}

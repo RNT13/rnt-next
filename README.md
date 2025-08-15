@@ -1,4 +1,4 @@
-# RNT Next CLI
+# RNT Next CLI v5
 
 CLI **interativo** para criar aplicações Next.js com configurações personalizadas. Criado por RNT.
 
@@ -351,7 +351,7 @@ Se você escolheu Tailwind CSS:
 - Edite `prisma/schema.prisma` para adicionar models
 - Use `src/lib/prisma.ts` para conexões
 
-## 🆕 Novidades da versão 4.0
+## 🆕 Novidades da versão v5
 
 - ✅ **Remoção da pergunta sobre Turbopack** (comando Next.js já pergunta)
 - ✅ **Remoção do experimental turbo** (não mais suportado)

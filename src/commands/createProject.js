@@ -71,7 +71,7 @@ export async function createProject(config) {
     );
     devDependencies.push(
       "@types/jsonwebtoken",
-      "@types/bcrypt-ts",
+      "@types/bcryptjs",
       "@types/cookie"
     );
   }

@@ -193,8 +193,8 @@ meu-projeto/
 
 ### Dependências Adicionais (Opcional)
 
-- **React Hook Form** - Formulários performáticos
-- **Zod** - Validação de esquemas TypeScript
+- **Formik** - Formulários performáticos
+- **Yup** - Validação de esquemas TypeScript
 - **iMask** - Máscaras de input
 - **React Hot Toast** - Notificações
 - **Framer Motion** - Animações
@@ -429,4 +429,4 @@ Criado com 💙 por **RNT**
 
 ---
 
-**RNT Next CLI v4.0** - Configure seu projeto Next.js do seu jeito, agora com backend!
+**RNT Next CLI** - Configure seu projeto Next.js do seu jeito, agora com backend!

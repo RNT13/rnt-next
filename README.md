@@ -1,4 +1,4 @@
-# RNT Next CLI v4.0
+# RNT Next CLI
 
 CLI **interativo** para criar aplicações Next.js com configurações personalizadas. Criado por RNT.
 
@@ -72,7 +72,7 @@ Após confirmar as configurações, o projeto será criado automaticamente.
 
 ### 4️⃣ Dependências Adicionais
 
-- **Sim**: React Hook Form, Zod, iMask, React Hot Toast, Framer Motion, React Icons
+- **Sim**: formik, yup, iMask, React Hot Toast, Framer Motion, React Icons
 - **Não**: Apenas dependências essenciais
 
 ### 5️⃣ Backend com Prisma

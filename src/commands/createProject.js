@@ -105,8 +105,6 @@ export async function createProject(config) {
   ];
   if (!useEmpty)
     folders.push(
-      "src/app/(private)",
-      "src/app/(public)",
       "src/components/ui",
       "src/components/ui/Button",
       "src/components/ui/CartWrapper",
@@ -153,7 +151,7 @@ const nextConfig = {`;
 module.exports = nextConfig
 `;
 
-  await writeFile(path.join(appPath, "next.config.js"), nextConfig);
+  await writeFile(path.join(appPath, "next.config.ts"), nextConfig);
 
   // Jest config se testes foram escolhidos
   if (installTests) {
@@ -1243,7 +1241,7 @@ const authSlice = createSlice({
   name: 'auth',
   initialState,
   reducers: {
-    loginStart: (state) => {
+    login: (state) => {
       state.loading = true
     },
     loginSuccess: (state, action: PayloadAction<{ id: string; name: string; email: string }>) => {
@@ -1264,7 +1262,7 @@ const authSlice = createSlice({
   }
 })
 
-export const { loginStart, loginSuccess, loginFailure, logout } = authSlice.actions
+export const { login, loginSuccess, loginFailure, logout } = authSlice.actions
 export default authSlice.reducer
 `
     );
@@ -1349,7 +1347,7 @@ generator client {
 
 // Configuração da conexão com o banco de dados
 datasource db {
-  provider = "mysql"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -1368,7 +1366,7 @@ model User {
 // 📝 COMO USAR ESTE ARQUIVO:
 // 
 // 1. Configure sua DATABASE_URL no arquivo .env
-//    Exemplo: DATABASE_URL="mysql://username:password@localhost:3306/database_name"
+//    Exemplo: DATABASE_URL="postgresql://username:password@localhost:3306/database_name"
 //
 // 2. Para criar o banco de dados e tabelas:
 //    npx prisma db push
@@ -1392,7 +1390,7 @@ model User {
 
     // Arquivo de configuração do Prisma Client
     await writeFile(
-      path.join(appPath, "src/lib/prisma.ts"),
+      path.join(appPath, "src/utils/prisma.ts"),
       `
 import { PrismaClient } from '@/generated/prisma'
 
@@ -1657,7 +1655,7 @@ export async function GET(req: NextRequest) {
     console.log("📚 Dependências adicionais instaladas");
   }
   if (installBackend) {
-    console.log("🗄️ Backend: Prisma + MySQL configurado");
+    console.log("🗄️ Backend: Prisma + PostgreSQL configurado");
     console.log("   - Configure DATABASE_URL no .env");
     console.log("   - Execute: npx prisma db push");
     console.log("   - Execute: npx prisma generate");

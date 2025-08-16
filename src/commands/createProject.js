@@ -274,7 +274,7 @@ export enum UserRole {
 }
 
 // Exemplo: Tipos de API Response
-export interface ApiResponse<T = any> {
+export interface ApiResponse {
   success: boolean;
   data?: T;
   message?: string;
@@ -1085,7 +1085,7 @@ export const ModalWrapper = ({ isOpen, children, onClose }: ModalWrapperProps) =
 
   //cria utils de checagem de input
   await writeFile(
-    path.join(appPath, "src/utils/maskedInputCheck.ts"),
+    path.join(appPath, "src/utils/maskedInputCheckUtils.ts"),
     `
 import { FormikProps } from 'formik'
 
@@ -1310,7 +1310,7 @@ const authSlice = createSlice({
   name: 'auth',
   initialState,
   reducers: {
-    loginSuccess: (state, action: PayloadAction<{ id: string; name: string; email: string }>) => {
+    login: (state, action: PayloadAction<{ id: string; name: string; email: string }>) => {
       state.isAuthenticated = true
       state.user = action.payload
     },
@@ -1321,7 +1321,7 @@ const authSlice = createSlice({
   }
 })
 
-export const { loginSuccess, logout } = authSlice.actions
+export const { login, logout } = authSlice.actions
 export default authSlice.reducer
 `
     );
@@ -1392,7 +1392,7 @@ model User {
     await writeFile(
       path.join(appPath, "src/utils/prisma.ts"),
       `
-import { PrismaClient } from '@/generated/prisma'
+import { PrismaClient } from '@prisma/client'
 
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined

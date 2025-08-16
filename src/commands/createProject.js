@@ -15,28 +15,29 @@ export async function createProject(config) {
     installBackend,
   } = config;
 
-  const finalChoice =
-    cssChoice === "Styled Components" ? "styled-components" : "tailwind";
+  const useStyledComponents = cssChoice === "Styled Components";
+  const useTailwind = !useStyledComponents;
+  const finalChoice = useStyledComponents ? "styled-components" : "tailwind";
   const appPath = path.join(process.cwd(), appName);
 
   // 1. Criação do projeto Next.js
-  console.log(chalk.blue(`🚀 Criando projeto Next.js '${appName}'...`));
-  let createCommand = `npx create-next-app@latest ${appName} --typescript --eslint --app --src-dir --import-alias "@/*"`;
-  createCommand +=
-    finalChoice === "tailwind" ? " --tailwind" : " --no-tailwind";
+  if (!fs.existsSync(appPath)) {
+    fs.mkdirSync(appPath);
+  }
+
+  let createCommand = `npx create-next-app@latest . --typescript --eslint --app --src-dir --import-alias "@/*"`;
+  createCommand += useTailwind ? " --tailwind" : " --no-tailwind";
   if (useEmpty) createCommand += " --empty";
-  execCommand(createCommand);
+
+  execCommand(createCommand, appPath);
 
   if (!fs.existsSync(appPath)) {
-    console.error(
-      chalk.red(`❌ Erro: Diretório ${appPath} não foi criado. Abortando.`)
-    );
+    console.error(`❌ Erro: Diretório ${appPath} não foi criado`);
     process.exit(1);
   }
 
   // 2. Instalação de dependências
-  console.log(chalk.blue("📦 Instalando dependências..."));
-  const prodDependencies = [
+  let prodDependencies = [
     "react-redux",
     "@reduxjs/toolkit",
     "immer",
@@ -46,18 +47,15 @@ export async function createProject(config) {
     "lucide-react",
   ];
 
-  const devDependencies = [
+  let devDependencies = [
     "eslint-plugin-prettier",
     "prettier",
     "eslint-config-prettier",
   ];
 
-  if (finalChoice === "styled-components") {
-    prodDependencies.push("styled-components");
-    devDependencies.push("@types/styled-components");
-  }
-
-  if (installExtraDeps) {
+  if (finalChoice === "styled-components")
+    prodDependencies.unshift("styled-components");
+  if (installExtraDeps)
     prodDependencies.push(
       "formik",
       "yup",
@@ -68,8 +66,6 @@ export async function createProject(config) {
       "framer-motion",
       "react-icons"
     );
-  }
-
   if (installBackend) {
     prodDependencies.push(
       "prisma",
@@ -84,7 +80,9 @@ export async function createProject(config) {
     );
   }
 
-  if (installTests) {
+  if (finalChoice === "styled-components")
+    devDependencies.push("@types/styled-components");
+  if (installTests)
     devDependencies.push(
       "jest",
       "@testing-library/react",
@@ -92,13 +90,10 @@ export async function createProject(config) {
       "@testing-library/user-event",
       "jest-environment-jsdom"
     );
-  }
 
-  // Passando o appPath para o comando de instalação
   installDependencies(prodDependencies, devDependencies, appPath);
 
   // 3. Estrutura de pastas
-  console.log(chalk.blue("📁 Criando estrutura de pastas..."));
   const folders = [
     "src/styles",
     "src/lib",
@@ -108,8 +103,7 @@ export async function createProject(config) {
     "src/redux/slices",
     ".vscode",
   ];
-
-  if (!useEmpty) {
+  if (!useEmpty)
     folders.push(
       "src/app/(private)",
       "src/app/(public)",
@@ -124,48 +118,40 @@ export async function createProject(config) {
       "src/components/layout/header",
       "src/components/layout/footer"
     );
-  }
+  if (installTests) folders.push("__tests__", "src/__tests__");
 
-  if (installTests) {
-    folders.push("__tests__", "src/__tests__");
-  }
-
-  if (installBackend) {
+  if (installBackend)
     folders.push(
       "src/app/api",
       "src/app/api/auth/login",
-      "src/app/api/auth/register",
+      "src/app/api/auth/signup",
       "src/app/api/auth/logout",
       "src/app/api/auth/verify",
       "src/app/api/users"
     );
-  }
 
   await ensureFolders(appPath, folders);
 
-  // 4. Criação de arquivos de configuração
-  console.log(chalk.blue("⚙️  Configurando arquivos..."));
-
   // Next.js config (sem experimental turbo)
   let nextConfig = `/** @type {import('next').NextConfig} */
-  const nextConfig = {`;
+const nextConfig = {`;
 
   if (finalChoice === "styled-components") {
     nextConfig += `
-    compiler: {
-      styledComponents: true,
-    },`;
+  compiler: {
+    styledComponents: true,
+  },`;
   }
 
   nextConfig += `
-    images: {
-      formats: ['image/avif', 'image/webp'],
-      domains: ['placehold.co'],
-    },
-  }
-  
-  module.exports = nextConfig
-  `;
+  images: {
+    formats: ['image/avif', 'image/webp'],
+    domains: ['placehold.co'],
+  },
+}
+
+module.exports = nextConfig
+`;
 
   await writeFile(path.join(appPath, "next.config.js"), nextConfig);
 
@@ -173,1015 +159,1012 @@ export async function createProject(config) {
   if (installTests) {
     await writeFile(
       path.join(appPath, "jest.config.js"),
-      `const nextJest = require('next/jest')
-  
-  const createJestConfig = nextJest({
-    // Provide the path to your Next.js app to load next.config.js and .env files
-    dir: './',
-  })
-  
-  // Add any custom config to be passed to Jest
-  const customJestConfig = {
-    setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
-    moduleNameMapping: {
-      // Handle module aliases (this will be automatically configured for you based on your tsconfig.json paths)
-      '^@/(.*)$': '<rootDir>/src/$1',
-    },
-    testEnvironment: 'jest-environment-jsdom',
-  }
-  
-  // createJestConfig is exported this way to ensure that next/jest can load the Next.js config which is async
-  module.exports = createJestConfig(customJestConfig)
-  `
-    );
+      `
+const nextJest = require('next/jest')
 
-    // 4. Criação de arquivos de configuração (exemplo)
-    await writeFile(
-      path.join(appPath, ".vscode/settings.json"),
-      JSON.stringify(
-        {
-          "editor.formatOnSave": true,
-          "editor.codeActionsOnSave": {
-            "source.fixAll.eslint": true,
-            "source.fixAll": true,
-          },
-          "editor.defaultFormatter": "esbenp.prettier-vscode",
-          "[typescriptreact]": {
-            "editor.defaultFormatter": "vscode.typescript-language-features",
-          },
-          "typescript.tsdk": "node_modules/typescript/lib",
-        },
-        null,
-        2
-      )
-    );
+const createJestConfig = nextJest({
+  // Provide the path to your Next.js app to load next.config.js and .env files
+  dir: './',
+})
 
-    // Prettier
-    await writeFile(
-      path.join(appPath, ".prettierrc.json"),
-      JSON.stringify(
-        {
-          trailingComma: "none",
-          semi: false,
-          singleQuote: true,
-          printWidth: 150,
-          arrowParens: "avoid",
-        },
-        null,
-        2
-      )
-    );
+// Add any custom config to be passed to Jest
+const customJestConfig = {
+  setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
+  moduleNameMapping: {
+    // Handle module aliases (this will be automatically configured for you based on your tsconfig.json paths)
+    '^@/(.*)$': '<rootDir>/src/$1',
+  },
+  testEnvironment: 'jest-environment-jsdom',
+}
 
-    // Editor config
-    await writeFile(
-      path.join(appPath, ".editorconfig"),
-      `root = true
-    
-    [*]
-    indent_style = space
-    indent_size = 2
-    end_of_line = lf
-    charset = utf-8
-    trim_trailing_whitespace = true
-    insert_final_newline = true
-    `
+// createJestConfig is exported this way to ensure that next/jest can load the Next.js config which is async
+module.exports = createJestConfig(customJestConfig)
+`
     );
 
     await writeFile(
-      path.join(
-        appPath,
-        "jest.setup.js",
-        `import '@testing-library/jest-dom'
-  `
-      )
+      path.join(appPath, "jest.setup.js"),
+      `import '@testing-library/jest-dom'\n`
     );
   }
+
+  // 4. Criação de arquivos de configuração (exemplo)
+  await writeFile(
+    path.join(appPath, ".vscode/settings.json"),
+    JSON.stringify(
+      {
+        "editor.formatOnSave": true,
+        "editor.codeActionsOnSave": {
+          "source.fixAll.eslint": true,
+          "source.fixAll": true,
+        },
+        "editor.defaultFormatter": "esbenp.prettier-vscode",
+        "[typescriptreact]": {
+          "editor.defaultFormatter": "vscode.typescript-language-features",
+        },
+        "typescript.tsdk": "node_modules/typescript/lib",
+      },
+      null,
+      2
+    )
+  );
+
+  // Prettier
+  await writeFile(
+    path.join(appPath, ".prettierrc.json"),
+    JSON.stringify(
+      {
+        trailingComma: "none",
+        semi: false,
+        singleQuote: true,
+        printWidth: 150,
+        arrowParens: "avoid",
+      },
+      null,
+      2
+    )
+  );
+
+  // Editor config
+  await writeFile(
+    path.join(appPath, ".editorconfig"),
+    `root = true
+  
+  [*]
+  indent_style = space
+  indent_size = 2
+  end_of_line = lf
+  charset = utf-8
+  trim_trailing_whitespace = true
+  insert_final_newline = true
+  `
+  );
 
   //Cria arquivo types.d.ts na raiz do projeto
   await writeFile(
     path.join(appPath, "types.d.ts"),
     `
-        /**
-   * Arquivo de tipos globais do projeto
-   * 
-   * Adicione aqui todos os tipos TypeScript que serão utilizados
-   * em múltiplos arquivos do projeto, incluindo:
-   * 
-   * - Interfaces de API
-   * - Tipos de dados do banco
-   * - Tipos de componentes compartilhados
-   * - Tipos de estado global (Redux)
-   * - Tipos de formulários
-   * - Enums e constantes tipadas
-   */
-  
-  // Exemplo: Tipos de usuário
-  export interface User {
-    id: string;
-    name: string;
-    email: string;
-    avatar?: string;
-    role: UserRole;
-    createdAt: Date;
-    updatedAt: Date;
-  }
-  
-  export enum UserRole {
-    ADMIN = 'admin',
-    USER = 'user',
-    MODERATOR = 'moderator'
-  }
-  
-  // Exemplo: Tipos de API Response
-  export interface ApiResponse<T = any> {
-    success: boolean;
-    data?: T;
-    message?: string;
-    errors?: string[];
-  }
-  
-  // Exemplo: Tipos de formulário
-  export interface LoginForm {
-    email: string;
-    password: string;
-    rememberMe?: boolean;
-  }
-  
-  export interface RegisterForm {
-    name: string;
-    email: string;
-    password: string;
-    confirmPassword: string;
-  }
-  
-  // Exemplo: Tipos de componentes
-  export interface ButtonProps {
-    variant?: 'primary' | 'secondary' | 'outline' | 'ghost';
-    size?: 'sm' | 'md' | 'lg';
-    loading?: boolean;
-    disabled?: boolean;
-    children: React.ReactNode;
-    onClick?: () => void;
-  }
-  
-  export interface ModalProps {
-    isOpen: boolean;
-    onClose: () => void;
-    title?: string;
-    children: React.ReactNode;
-    size?: 'sm' | 'md' | 'lg' | 'xl';
-  }
-  
-  // Exemplo: Tipos de estado
-  export interface AuthState {
-    user: User | null;
-    isAuthenticated: boolean;
-    isLoading: boolean;
-    error: string | null;
-  }
-  
-  // Exemplo: Tipos de produtos (e-commerce)
-  export interface Product {
-    id: string;
-    name: string;
-    description: string;
-    price: number;
-    images: string[];
-    category: string;
-    stock: number;
-    featured: boolean;
-  }
-  
-  export interface CartItem {
-    product: Product;
-    quantity: number;
-  }
-  
-  export interface CartState {
-    items: CartItem[];
-    total: number;
-    isOpen: boolean;
-  }
-      `
+      /**
+ * Arquivo de tipos globais do projeto
+ * 
+ * Adicione aqui todos os tipos TypeScript que serão utilizados
+ * em múltiplos arquivos do projeto, incluindo:
+ * 
+ * - Interfaces de API
+ * - Tipos de dados do banco
+ * - Tipos de componentes compartilhados
+ * - Tipos de estado global (Redux)
+ * - Tipos de formulários
+ * - Enums e constantes tipadas
+ */
+
+// Exemplo: Tipos de usuário
+export interface User {
+  id: string;
+  name: string;
+  email: string;
+  avatar?: string;
+  role: UserRole;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export enum UserRole {
+  ADMIN = 'admin',
+  USER = 'user',
+  MODERATOR = 'moderator'
+}
+
+// Exemplo: Tipos de API Response
+export interface ApiResponse<T = any> {
+  success: boolean;
+  data?: T;
+  message?: string;
+  errors?: string[];
+}
+
+// Exemplo: Tipos de formulário
+export interface LoginForm {
+  email: string;
+  password: string;
+  rememberMe?: boolean;
+}
+
+export interface RegisterForm {
+  name: string;
+  email: string;
+  password: string;
+  confirmPassword: string;
+}
+
+// Exemplo: Tipos de componentes
+export interface ButtonProps {
+  variant?: 'primary' | 'secondary' | 'outline' | 'ghost';
+  size?: 'sm' | 'md' | 'lg';
+  loading?: boolean;
+  disabled?: boolean;
+  children: React.ReactNode;
+  onClick?: () => void;
+}
+
+export interface ModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  title?: string;
+  children: React.ReactNode;
+  size?: 'sm' | 'md' | 'lg' | 'xl';
+}
+
+// Exemplo: Tipos de estado
+export interface AuthState {
+  user: User | null;
+  isAuthenticated: boolean;
+  isLoading: boolean;
+  error: string | null;
+}
+
+// Exemplo: Tipos de produtos (e-commerce)
+export interface Product {
+  id: string;
+  name: string;
+  description: string;
+  price: number;
+  images: string[];
+  category: string;
+  stock: number;
+  featured: boolean;
+}
+
+export interface CartItem {
+  product: Product;
+  quantity: number;
+}
+
+export interface CartState {
+  items: CartItem[];
+  total: number;
+  isOpen: boolean;
+}
+    `
   );
 
   //Cria arquivo useAppDispatch.ts dentro de src/hooks
   await writeFile(
     path.join(appPath, "src/hooks/useAppDispatch.ts"),
     `
-        import { AppDispatch, RootState } from '@/redux/store'
-  import { TypedUseSelectorHook, useDispatch, useSelector } from 'react-redux'
-  
-  export const useAppDispatch = () => useDispatch<AppDispatch>()
-  export const useAppSelector: TypedUseSelectorHook<RootState> = useSelector
-  
-      `
+      import { AppDispatch, RootState } from '@/redux/store'
+import { TypedUseSelectorHook, useDispatch, useSelector } from 'react-redux'
+
+export const useAppDispatch = () => useDispatch<AppDispatch>()
+export const useAppSelector: TypedUseSelectorHook<RootState> = useSelector
+
+    `
   );
 
   // Criar colorUtils
   await writeFile(
     path.join(appPath, "src/utils/colorUtils.ts"),
     `// 🎨 COLOR UTILS - Utilitários para geração de variantes de cores HSL
-  
-  export function colorHSLVariants(h: number, s: number, l: number) {
-    const clamp = (val: number) => Math.min(100, Math.max(0, val))
-    return {
-      base: \`hsl(\${h}, \${s}%, \${clamp(l)}%)\`,
-      light: \`hsl(\${h}, \${s}%, \${clamp(l + 10)}%)\`,
-      light02: \`hsla(\${h}, \${s}%, \${clamp(l + 2)}%, 0.2)\`,
-      light04: \`hsla(\${h}, \${s}%, \${clamp(l + 4)}%, 0.4)\`,
-      light08: \`hsla(\${h}, \${s}%, \${clamp(l + 6)}%, 0.8)\`,
-      light20: \`hsl(\${h}, \${s}%, \${clamp(l + 20)}%)\`,
-      light30: \`hsl(\${h}, \${s}%, \${clamp(l + 30)}%)\`,
-      light40: \`hsl(\${h}, \${s}%, \${clamp(l + 40)}%)\`,
-      light50: \`hsl(\${h}, \${s}%, \${clamp(l + 50)}%)\`,
-      dark: \`hsl(\${h}, \${s}%, \${clamp(l - 10)}%)\`,
-      dark02: \`hsla(\${h}, \${s}%, \${clamp(l - 2)}%, 0.2)\`,
-      dark04: \`hsla(\${h}, \${s}%, \${clamp(l - 4)}%, 0.4)\`,
-      dark08: \`hsla(\${h}, \${s}%, \${clamp(l - 6)}%, 0.8)\`,
-      dark20: \`hsl(\${h}, \${s}%, \${clamp(l - 20)}%)\`,
-      dark30: \`hsl(\${h}, \${s}%, \${clamp(l - 30)}%)\`,
-      dark40: \`hsl(\${h}, \${s}%, \${clamp(l - 40)}%)\`,
-      dark50: \`hsl(\${h}, \${s}%, \${clamp(l - 50)}%)\`
-    }
+
+export function colorHSLVariants(h: number, s: number, l: number) {
+  const clamp = (val: number) => Math.min(100, Math.max(0, val))
+  return {
+    base: \`hsl(\${h}, \${s}%, \${clamp(l)}%)\`,
+    light: \`hsl(\${h}, \${s}%, \${clamp(l + 10)}%)\`,
+    light02: \`hsla(\${h}, \${s}%, \${clamp(l + 2)}%, 0.2)\`,
+    light04: \`hsla(\${h}, \${s}%, \${clamp(l + 4)}%, 0.4)\`,
+    light08: \`hsla(\${h}, \${s}%, \${clamp(l + 6)}%, 0.8)\`,
+    light20: \`hsl(\${h}, \${s}%, \${clamp(l + 20)}%)\`,
+    light30: \`hsl(\${h}, \${s}%, \${clamp(l + 30)}%)\`,
+    light40: \`hsl(\${h}, \${s}%, \${clamp(l + 40)}%)\`,
+    light50: \`hsl(\${h}, \${s}%, \${clamp(l + 50)}%)\`,
+    dark: \`hsl(\${h}, \${s}%, \${clamp(l - 10)}%)\`,
+    dark02: \`hsla(\${h}, \${s}%, \${clamp(l - 2)}%, 0.2)\`,
+    dark04: \`hsla(\${h}, \${s}%, \${clamp(l - 4)}%, 0.4)\`,
+    dark08: \`hsla(\${h}, \${s}%, \${clamp(l - 6)}%, 0.8)\`,
+    dark20: \`hsl(\${h}, \${s}%, \${clamp(l - 20)}%)\`,
+    dark30: \`hsl(\${h}, \${s}%, \${clamp(l - 30)}%)\`,
+    dark40: \`hsl(\${h}, \${s}%, \${clamp(l - 40)}%)\`,
+    dark50: \`hsl(\${h}, \${s}%, \${clamp(l - 50)}%)\`
   }
-  `
+}
+`
   );
 
   // Theme configuration atualizado
   await writeFile(
     path.join(appPath, "src/styles/theme.ts"),
     `// 🎨 ARQUIVO DE TEMA - Configurações de cores e breakpoints do projeto
-  
-  import { colorHSLVariants } from '@/utils/colorUtils'
-  
-  export const media = {
-    pc: '@media (max-width: 1024px)',
-    tablet: '@media (max-width: 768px)',
-    mobile: '@media (max-width: 480px)',
+
+import { colorHSLVariants } from '@/utils/colorUtils'
+
+export const media = {
+  pc: '@media (max-width: 1024px)',
+  tablet: '@media (max-width: 768px)',
+  mobile: '@media (max-width: 480px)',
+}
+
+export const transitions = {
+  default: 'all 0.2s ease'
+}
+
+export const baseBlue = colorHSLVariants(220, 80, 50)
+export const baseGreen = colorHSLVariants(100, 100, 50)
+export const baseRed = colorHSLVariants(0, 100, 50)
+export const baseCyan = colorHSLVariants(180, 150, 50)
+
+export const theme = {
+  colors: {
+    baseBlue: baseBlue,
+    baseGreen: baseGreen,
+    baseRed: baseRed,
+    baseCyan: baseCyan,
+    primaryColor: '#011627',
+    secondaryColor: '#023864',
+    thirdColor: '#0d6efd',
+    forthColor: '#E25010',
+    textColor: '#fff',
+    yellow: '#ffff00',
+    yellow2: '#E1A32A',
+    blue: '#0000FF',
+    blue2: '#1E90FF',
+    gray: '#666666',
+    gray2: '#a1a1a1',
+    orange: '#ff4500',
+    orange2: '#ff7f50',
+    black: '#000',
+    red: '#FF0000',
+    redHover: '#FF4837',
+    error: '#AB2E46',
+    green: '#008000',
+    green2: '#44BD32',
+    neonBlue: '#00FFD5 ',
+    neonGree: '#00FF6A '
   }
-  
-  export const transitions = {
-    default: 'all 0.2s ease'
-  }
-  
-  export const baseBlue = colorHSLVariants(220, 80, 50)
-  export const baseGreen = colorHSLVariants(100, 100, 50)
-  export const baseRed = colorHSLVariants(0, 100, 50)
-  export const baseCyan = colorHSLVariants(180, 150, 50)
-  
-  export const theme = {
-    colors: {
-      baseBlue: baseBlue,
-      baseGreen: baseGreen,
-      baseRed: baseRed,
-      baseCyan: baseCyan,
-      primaryColor: '#011627',
-      secondaryColor: '#023864',
-      thirdColor: '#0d6efd',
-      forthColor: '#E25010',
-      textColor: '#fff',
-      yellow: '#ffff00',
-      yellow2: '#E1A32A',
-      blue: '#0000FF',
-      blue2: '#1E90FF',
-      gray: '#666666',
-      gray2: '#a1a1a1',
-      orange: '#ff4500',
-      orange2: '#ff7f50',
-      black: '#000',
-      red: '#FF0000',
-      redHover: '#FF4837',
-      error: '#AB2E46',
-      green: '#008000',
-      green2: '#44BD32',
-      neonBlue: '#00FFD5 ',
-      neonGree: '#00FF6A '
+}
+
+export const darkTheme = {
+  colors: {
+    primaryColor: '#13161b',
+    secondaryColor: '#1c1f25',
+    background: '#2F2F2F',
+    inputColor: '#0d0e12',
+    white: '#121212',
+    blue: '#0d6efd',
+    blue2: '#0000FF',
+    red: '#FF3347',
+    green: '#28a745',
+    orange: '#ff4500',
+    yellow: '#fffF00',
+    shadow: '#000',
+    grey: '#a1a1a1',
+    textColor: '#f1f1f1',
+    neon: {
+      pink1: '#FF1493',
+      pink2: '#FF00FF',
+      green1: '#39FF14',
+      green2: '#00FF7F',
+      blue1: '#00BFFF',
+      blue2: '#00FFFF'
     }
   }
-  
-  export const darkTheme = {
-    colors: {
-      primaryColor: '#13161b',
-      secondaryColor: '#1c1f25',
-      background: '#2F2F2F',
-      inputColor: '#0d0e12',
-      white: '#121212',
-      blue: '#0d6efd',
-      blue2: '#0000FF',
-      red: '#FF3347',
-      green: '#28a745',
-      orange: '#ff4500',
-      yellow: '#fffF00',
-      shadow: '#000',
-      grey: '#a1a1a1',
-      textColor: '#f1f1f1',
-      neon: {
-        pink1: '#FF1493',
-        pink2: '#FF00FF',
-        green1: '#39FF14',
-        green2: '#00FF7F',
-        blue1: '#00BFFF',
-        blue2: '#00FFFF'
-      }
+}
+
+export const lightTheme = {
+  colors: {
+    primaryColor: '#666666',
+    secondaryColor: '#a1a1a1',
+    background: '#808080',
+    inputColor: '#f1f1f1',
+    white: '#ffffff',
+    blue: '#3a86ff',
+    blue2: '#0000FF',
+    red: '#FF0000',
+    green: '#34d399',
+    orange: '#ff4500',
+    yellow: '#ffff00',
+    shadow: '#000',
+    grey: '#a1a1a1',
+    textColor: '#13161b',
+    neon: {
+      pink1: '#FF1493',
+      pink2: '#FF00FF',
+      green1: '#39FF14',
+      green2: '#00FF7F',
+      blue1: '#00FFFF',
+      blue2: '#00BFFF'
     }
   }
-  
-  export const lightTheme = {
-    colors: {
-      primaryColor: '#666666',
-      secondaryColor: '#a1a1a1',
-      background: '#808080',
-      inputColor: '#f1f1f1',
-      white: '#ffffff',
-      blue: '#3a86ff',
-      blue2: '#0000FF',
-      red: '#FF0000',
-      green: '#34d399',
-      orange: '#ff4500',
-      yellow: '#ffff00',
-      shadow: '#000',
-      grey: '#a1a1a1',
-      textColor: '#13161b',
-      neon: {
-        pink1: '#FF1493',
-        pink2: '#FF00FF',
-        green1: '#39FF14',
-        green2: '#00FF7F',
-        blue1: '#00FFFF',
-        blue2: '#00BFFF'
-      }
-    }
-  }
-  
-  export const themeConfig = {
-    light: lightTheme,
-    dark: darkTheme
-  }
-  `
+}
+
+export const themeConfig = {
+  light: lightTheme,
+  dark: darkTheme
+}
+`
   );
 
   // Cria componente de Botão estilizado
   await writeFile(
     path.join(appPath, "src/components/ui/Button/Button.tsx"),
     `
-        "use client";
-  
-  import Link from "next/link";
-  import React, { forwardRef } from "react";
-  import { ButtonContent, IconWrapper, StyledButton } from "./ButtonStyles";
-  
-  type ButtonVariants = "primary" | "secondary" | "outline" | "ghost" | "danger";
-  type ButtonSizes = "sm" | "md" | "lg";
-  
-  type AnchorProps = React.AnchorHTMLAttributes<HTMLAnchorElement> & {
-    href: string;
-  };
-  
-  type NativeButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
-    href?: undefined;
-  };
-  
-  export interface CommonButtonProps {
-    variant?: ButtonVariants;
-    size?: ButtonSizes;
-    loading?: boolean;
-    fullWidth?: boolean;
-    leftIcon?: React.ReactNode;
-    rightIcon?: React.ReactNode;
-    children?: React.ReactNode;
-  }
-  
-  export type ButtonProps = CommonButtonProps & (AnchorProps | NativeButtonProps);
-  
-  export const Button = forwardRef<
-    HTMLButtonElement | HTMLAnchorElement,
-    ButtonProps
-  >(
-    (
-      {
-        variant = "primary",
-        size = "md",
-        loading = false,
-        fullWidth = false,
-        leftIcon,
-        rightIcon,
-        disabled,
-        children,
-        ...props
-      },
-      ref
-    ) => {
-      const isDisabled = disabled || loading;
-  
-      const content = (
-        <StyledButton
-          as={(props as AnchorProps).href ? "a" : "button"}
-          ref={ref as any}
-          $variant={variant}
-          $size={size}
-          $loading={loading}
-          $fullWidth={fullWidth}
-          disabled={isDisabled}
-          aria-disabled={isDisabled}
-          {...(props as any)}
-        >
-          <ButtonContent $loading={loading}>
-            {leftIcon && <IconWrapper>{leftIcon}</IconWrapper>}
-            {children}
-            {rightIcon && <IconWrapper>{rightIcon}</IconWrapper>}
-          </ButtonContent>
-        </StyledButton>
+      "use client";
+
+import Link from "next/link";
+import React, { forwardRef } from "react";
+import { ButtonContent, IconWrapper, StyledButton } from "./ButtonStyles";
+
+type ButtonVariants = "primary" | "secondary" | "outline" | "ghost" | "danger";
+type ButtonSizes = "sm" | "md" | "lg";
+
+type AnchorProps = React.AnchorHTMLAttributes<HTMLAnchorElement> & {
+  href: string;
+};
+
+type NativeButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
+  href?: undefined;
+};
+
+export interface CommonButtonProps {
+  variant?: ButtonVariants;
+  size?: ButtonSizes;
+  loading?: boolean;
+  fullWidth?: boolean;
+  leftIcon?: React.ReactNode;
+  rightIcon?: React.ReactNode;
+  children?: React.ReactNode;
+}
+
+export type ButtonProps = CommonButtonProps & (AnchorProps | NativeButtonProps);
+
+export const Button = forwardRef<
+  HTMLButtonElement | HTMLAnchorElement,
+  ButtonProps
+>(
+  (
+    {
+      variant = "primary",
+      size = "md",
+      loading = false,
+      fullWidth = false,
+      leftIcon,
+      rightIcon,
+      disabled,
+      children,
+      ...props
+    },
+    ref
+  ) => {
+    const isDisabled = disabled || loading;
+
+    const content = (
+      <StyledButton
+        as={(props as AnchorProps).href ? "a" : "button"}
+        ref={ref as any}
+        $variant={variant}
+        $size={size}
+        $loading={loading}
+        $fullWidth={fullWidth}
+        disabled={isDisabled}
+        aria-disabled={isDisabled}
+        {...(props as any)}
+      >
+        <ButtonContent $loading={loading}>
+          {leftIcon && <IconWrapper>{leftIcon}</IconWrapper>}
+          {children}
+          {rightIcon && <IconWrapper>{rightIcon}</IconWrapper>}
+        </ButtonContent>
+      </StyledButton>
+    );
+
+    if ((props as AnchorProps).href) {
+      return (
+        <Link href={(props as AnchorProps).href} passHref legacyBehavior>
+          {content}
+        </Link>
       );
-  
-      if ((props as AnchorProps).href) {
-        return (
-          <Link href={(props as AnchorProps).href} passHref legacyBehavior>
-            {content}
-          </Link>
-        );
-      }
-  
-      return content;
     }
-  );
-  
-  Button.displayName = "Button";
-  export default Button;
-  
-      `
+
+    return content;
+  }
+);
+
+Button.displayName = "Button";
+export default Button;
+
+    `
   );
 
   // Cria estilos do Botão
   await writeFile(
     path.join(appPath, "src/components/ui/Button/ButtonStyles.ts"),
     String.raw`
-  import styled, { css } from 'styled-components';
+import styled, { css } from 'styled-components';
+
+interface StyledButtonProps {
+  $variant: 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger';
+  $size: 'sm' | 'md' | 'lg';
+  $loading: boolean;
+  $fullWidth: boolean;
+}
+
+const buttonVariants = {
+  primary: css\`
+    background-color: \${({ theme }) => theme.colors.primary.base};
+    color: \${({ theme }) => theme.colors.white};
+    border: 2px solid \${({ theme }) => theme.colors.primary.base};
+    
+    &:hover:not(:disabled) {
+      background-color: \${({ theme }) => theme.colors.primary.dark};
+      border-color: \${({ theme }) => theme.colors.primary.dark};
+      transform: translateY(-1px);
+    }
+    
+    &:active:not(:disabled) {
+      background-color: \${({ theme }) => theme.colors.primary.dark20};
+      transform: translateY(0);
+    }
+  \`,
   
-  interface StyledButtonProps {
-    $variant: 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger';
-    $size: 'sm' | 'md' | 'lg';
-    $loading: boolean;
-    $fullWidth: boolean;
-  }
+  secondary: css\`
+    background-color: \${({ theme }) => theme.colors.secondary.base};
+    color: \${({ theme }) => theme.colors.white};
+    border: 2px solid \${({ theme }) => theme.colors.secondary.base};
+    
+    &:hover:not(:disabled) {
+      background-color: \${({ theme }) => theme.colors.secondary.dark};
+      border-color: \${({ theme }) => theme.colors.secondary.dark};
+      transform: translateY(-1px);
+    }
+    
+    &:active:not(:disabled) {
+      background-color: \${({ theme }) => theme.colors.secondary.dark20};
+      transform: translateY(0);
+    }
+  \`,
   
-  const buttonVariants = {
-    primary: css\`
+  outline: css\`
+    background-color: transparent;
+    color: \${({ theme }) => theme.colors.primary.base};
+    border: 2px solid \${({ theme }) => theme.colors.primary.base};
+    
+    &:hover:not(:disabled) {
       background-color: \${({ theme }) => theme.colors.primary.base};
       color: \${({ theme }) => theme.colors.white};
-      border: 2px solid \${({ theme }) => theme.colors.primary.base};
-      
-      &:hover:not(:disabled) {
-        background-color: \${({ theme }) => theme.colors.primary.dark};
-        border-color: \${({ theme }) => theme.colors.primary.dark};
-        transform: translateY(-1px);
-      }
-      
-      &:active:not(:disabled) {
-        background-color: \${({ theme }) => theme.colors.primary.dark20};
-        transform: translateY(0);
-      }
-    \`,
-    
-    secondary: css\`
-      background-color: \${({ theme }) => theme.colors.secondary.base};
-      color: \${({ theme }) => theme.colors.white};
-      border: 2px solid \${({ theme }) => theme.colors.secondary.base};
-      
-      &:hover:not(:disabled) {
-        background-color: \${({ theme }) => theme.colors.secondary.dark};
-        border-color: \${({ theme }) => theme.colors.secondary.dark};
-        transform: translateY(-1px);
-      }
-      
-      &:active:not(:disabled) {
-        background-color: \${({ theme }) => theme.colors.secondary.dark20};
-        transform: translateY(0);
-      }
-    \`,
-    
-    outline: css\`
-      background-color: transparent;
-      color: \${({ theme }) => theme.colors.primary.base};
-      border: 2px solid \${({ theme }) => theme.colors.primary.base};
-      
-      &:hover:not(:disabled) {
-        background-color: \${({ theme }) => theme.colors.primary.base};
-        color: \${({ theme }) => theme.colors.white};
-        transform: translateY(-1px);
-      }
-      
-      &:active:not(:disabled) {
-        background-color: \${({ theme }) => theme.colors.primary.dark};
-        transform: translateY(0);
-      }
-    \`,
-    
-    ghost: css\`
-      background-color: transparent;
-      color: \${({ theme }) => theme.colors.text.primary};
-      border: 2px solid transparent;
-      
-      &:hover:not(:disabled) {
-        background-color: \${({ theme }) => theme.colors.gray.light40};
-        transform: translateY(-1px);
-      }
-      
-      &:active:not(:disabled) {
-        background-color: \${({ theme }) => theme.colors.gray.light30};
-        transform: translateY(0);
-      }
-    \`,
-    
-    danger: css\`
-      background-color: \${({ theme }) => theme.colors.error.base};
-      color: \${({ theme }) => theme.colors.white};
-      border: 2px solid \${({ theme }) => theme.colors.error.base};
-      
-      &:hover:not(:disabled) {
-        background-color: \${({ theme }) => theme.colors.error.dark};
-        border-color: \${({ theme }) => theme.colors.error.dark};
-        transform: translateY(-1px);
-      }
-      
-      &:active:not(:disabled) {
-        background-color: \${({ theme }) => theme.colors.error.dark20};
-        transform: translateY(0);
-      }
-    \`
-  };
-  
-  const buttonSizes = {
-    sm: css\`
-      padding: 8px 16px;
-      font-size: 14px;
-      min-height: 36px;
-    \`,
-    
-    md: css\`
-      padding: 12px 24px;
-      font-size: 16px;
-      min-height: 44px;
-    \`,
-    
-    lg: css\`
-      padding: 16px 32px;
-      font-size: 18px;
-      min-height: 52px;
-    \`
-  };
-  
-  export const StyledButton = styled.button<StyledButtonProps>\`
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-  
-    font-family: \${({ theme }) => theme.fonts.primary};
-    font-weight: 600;
-    line-height: 1;
-    text-decoration: none;
-    text-align: center;
-    white-space: nowrap;
-  
-    border-radius: \${({ theme }) => theme.borderRadius.md};
-    cursor: pointer;
-    transition: all 0.2s ease-in-out;
-  
-    position: relative;
-    overflow: hidden;
-  
-    \${({ $size }) => buttonSizes[$size]}
-    \${({ $variant }) => buttonVariants[$variant]}
-  
-    \${({ $fullWidth }) => $fullWidth && css\`
-      width: 100%;
-    \`}
-  
-    &:disabled {
-      opacity: 0.6;
-      cursor: not-allowed;
-      transform: none !important;
+      transform: translateY(-1px);
     }
+    
+    &:active:not(:disabled) {
+      background-color: \${({ theme }) => theme.colors.primary.dark};
+      transform: translateY(0);
+    }
+  \`,
   
-    \${({ $loading }) => $loading && css\`
-      cursor: not-allowed;
+  ghost: css\`
+    background-color: transparent;
+    color: \${({ theme }) => theme.colors.text.primary};
+    border: 2px solid transparent;
+    
+    &:hover:not(:disabled) {
+      background-color: \${({ theme }) => theme.colors.gray.light40};
+      transform: translateY(-1px);
+    }
+    
+    &:active:not(:disabled) {
+      background-color: \${({ theme }) => theme.colors.gray.light30};
+      transform: translateY(0);
+    }
+  \`,
   
-      &::before {
-        content: '';
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        width: 16px;
-        height: 16px;
-        margin: -8px 0 0 -8px;
-        border: 2px solid transparent;
-        border-top: 2px solid currentColor;
-        border-radius: 50%;
-        animation: spin 1s linear infinite;
-      }
+  danger: css\`
+    background-color: \${({ theme }) => theme.colors.error.base};
+    color: \${({ theme }) => theme.colors.white};
+    border: 2px solid \${({ theme }) => theme.colors.error.base};
+    
+    &:hover:not(:disabled) {
+      background-color: \${({ theme }) => theme.colors.error.dark};
+      border-color: \${({ theme }) => theme.colors.error.dark};
+      transform: translateY(-1px);
+    }
+    
+    &:active:not(:disabled) {
+      background-color: \${({ theme }) => theme.colors.error.dark20};
+      transform: translateY(0);
+    }
+  \`
+};
+
+const buttonSizes = {
+  sm: css\`
+    padding: 8px 16px;
+    font-size: 14px;
+    min-height: 36px;
+  \`,
   
-      @keyframes spin {
-        0% { transform: rotate(0deg); }
-        100% { transform: rotate(360deg); }
-      }
-    \`}
+  md: css\`
+    padding: 12px 24px;
+    font-size: 16px;
+    min-height: 44px;
+  \`,
   
-    &::after {
+  lg: css\`
+    padding: 16px 32px;
+    font-size: 18px;
+    min-height: 52px;
+  \`
+};
+
+export const StyledButton = styled.button<StyledButtonProps>\`
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+
+  font-family: \${({ theme }) => theme.fonts.primary};
+  font-weight: 600;
+  line-height: 1;
+  text-decoration: none;
+  text-align: center;
+  white-space: nowrap;
+
+  border-radius: \${({ theme }) => theme.borderRadius.md};
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+
+  position: relative;
+  overflow: hidden;
+
+  \${({ $size }) => buttonSizes[$size]}
+  \${({ $variant }) => buttonVariants[$variant]}
+
+  \${({ $fullWidth }) => $fullWidth && css\`
+    width: 100%;
+  \`}
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none !important;
+  }
+
+  \${({ $loading }) => $loading && css\`
+    cursor: not-allowed;
+
+    &::before {
       content: '';
       position: absolute;
       top: 50%;
       left: 50%;
-      width: 0;
-      height: 0;
+      width: 16px;
+      height: 16px;
+      margin: -8px 0 0 -8px;
+      border: 2px solid transparent;
+      border-top: 2px solid currentColor;
       border-radius: 50%;
-      background: rgba(255, 255, 255, 0.3);
-      transform: translate(-50%, -50%);
-      transition: width 0.3s, height 0.3s;
+      animation: spin 1s linear infinite;
     }
-  
-    &:active:not(:disabled)::after {
-      width: 300px;
-      height: 300px;
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
     }
-  
-    &:focus-visible {
-      outline: 2px solid \${({ theme }) => theme.colors.primary.base};
-      outline-offset: 2px;
-    }
-  
-    @media (max-width: \${({ theme }) => theme.breakpoints.sm}) {
-      \${({ $size }) => $size === 'lg' && buttonSizes.md}
-      \${({ $size }) => $size === 'md' && buttonSizes.sm}
-    }
-  \`;
-  
-  export const ButtonContent = styled.span<{ $loading: boolean }>\`
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    opacity: \${({ $loading }) => $loading ? 0 : 1};
-    transition: opacity 0.2s ease-in-out;
-  \`;
-  
-  export const IconWrapper = styled.span\`
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  
-    svg {
-      width: 1em;
-      height: 1em;
-    }
-  \`;
-  `
+  \`}
+
+  &::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.3);
+    transform: translate(-50%, -50%);
+    transition: width 0.3s, height 0.3s;
+  }
+
+  &:active:not(:disabled)::after {
+    width: 300px;
+    height: 300px;
+  }
+
+  &:focus-visible {
+    outline: 2px solid \${({ theme }) => theme.colors.primary.base};
+    outline-offset: 2px;
+  }
+
+  @media (max-width: \${({ theme }) => theme.breakpoints.sm}) {
+    \${({ $size }) => $size === 'lg' && buttonSizes.md}
+    \${({ $size }) => $size === 'md' && buttonSizes.sm}
+  }
+\`;
+
+export const ButtonContent = styled.span<{ $loading: boolean }>\`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  opacity: \${({ $loading }) => $loading ? 0 : 1};
+  transition: opacity 0.2s ease-in-out;
+\`;
+
+export const IconWrapper = styled.span\`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  svg {
+    width: 1em;
+    height: 1em;
+  }
+\`;
+`
   );
 
   // Cria componente de CartWrapper
   await writeFile(
     path.join(appPath, "src/components/ui/CartWrapper/CartWrapper.tsx"),
     `
-      import { AnimatePresence, motion } from "framer-motion";
-  import { ReactNode } from "react";
-  
-  type CartWrapperProps = {
-    isOpen: boolean;
-    onClose: () => void;
-    children: ReactNode;
-  };
-  
-  export const CartWrapper = ({ isOpen, onClose, children }: CartWrapperProps) => {
-    return (
-      <AnimatePresence>
-        {isOpen && (
-          <>
-            <motion.div
-              key="cart-backdrop"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{
-                duration: 0.3,
-                ease: "easeOut",
-                opacity: {
-                  duration: 0.3,
-                },
-                when: "beforeChildren",
-              }}
-              onClick={onClose}
-              style={{
-                position: "fixed",
-                top: 0,
-                left: 0,
-                width: "100vw",
-                height: "100vh",
-                backdropFilter: "blur(5px)",
-                zIndex: 99,
-              }}
-            />
-  
-            <motion.aside
-              key="cart-panel"
-              initial={{ x: "100%" }}
-              animate={{ x: 0 }}
-              exit={{ x: "100%" }}
-              transition={{ duration: 0.3, ease: "easeInOut" }}
-              style={{
-                position: "fixed",
-                top: 0,
-                right: 0,
-                width: "100%",
-                height: "100vh",
-                display: "flex",
-                justifyContent: "end",
-                zIndex: 100,
-              }}
-              onClick={onClose}
-            >
-              <div onClick={(e) => e.stopPropagation()}>{children}</div>
-            </motion.aside>
-          </>
-        )}
-      </AnimatePresence>
-    );
-  };
-  
-    `
-  );
+    import { AnimatePresence, motion } from "framer-motion";
+import { ReactNode } from "react";
 
-  //cria componente de ErrorMessage
-  await writeFile(
-    path.join(appPath, "src/components/ui/ErrorMessage/ErrorMessage.tsx"),
-    `
-      import { BiSolidError } from "react-icons/bi";
-  import { ErrorMessageContainer, ErrorMessageContent } from "./ErrorMessageStyles";
-  
-  
-  type Props = {
-    message: string
-  }
-  
-  export const ErrorMessage = ({ message }: Props) => (
-    <ErrorMessageContainer role="alert" aria-label="Mensagem de erro" className="container">
-      <ErrorMessageContent>
-        <BiSolidError />
-        {message}
-      </ErrorMessageContent>
-    </ErrorMessageContainer>
-  )
-  
-    `
-  );
+type CartWrapperProps = {
+  isOpen: boolean;
+  onClose: () => void;
+  children: ReactNode;
+};
 
-  // cria estilo do ErrorMessage
-  await writeFile(
-    path.join(appPath, "src/components/ui/ErrorMessage/ErrorMessageStyles.ts"),
-    `
-  import { theme } from '@/styles/theme';
-  import { styled } from 'styled-components';
-  
-  export const ErrorMessageContainer = styled.div\`\`;
-  
-  export const ErrorMessageContent = styled.div\`
-    padding: 1rem;
-    border-radius: 8px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.2rem;
-    font-weight: 500;
-    margin: 1rem;
-    text-align: center;
-    color: \${theme.colors.baseBlue.light40};
-    background-color: \${theme.colors.baseRed.dark08};
-  
-    svg {
-      font-size: 2rem;
-      margin-right: 0.5rem;
-    }
-  \`;
-  `
-  );
-
-  // Cria componente de MaskedInput
-  await writeFile(
-    path.join(appPath, "src/components/ui/MaskedInput/MaskedInput.tsx"),
-    `
-  import { useField } from 'formik'
-  import { IMaskInput } from 'react-imask'
-  import { MaskedInputContainer } from './MaskedInputStyles'
-  
-  type MaskedInputProps = {
-    name: string
-    mask?: string
-    placeholder?: string
-    className?: string
-    showError?: boolean
-    type?: string
-    id?: string
-  }
-  
-  export const MaskedInput = ({ name, mask, placeholder, className, showError = false, type = 'text', id }: MaskedInputProps) => {
-    const [field, meta, helpers] = useField(name)
-  
-    const commonProps = {
-      ...field,
-      placeholder,
-      className,
-      type,
-      id,
-      onBlur: () => helpers.setTouched(true),
-    }
-  
-    return (
-      <MaskedInputContainer>
-        {mask ? (
-          <IMaskInput
-            {...commonProps}
-            mask={mask}
-            value={String(field.value ?? '')}
-            onAccept={(value: string) => helpers.setValue(value)}
-          />
-        ) : (
-          <input
-            {...commonProps}
-            value={String(field.value ?? '')}
-            onChange={(e) => helpers.setValue(e.target.value)}
-          />
-        )}
-        {showError && meta.touched && meta.error && (
-          <div style={{ color: 'red', fontSize: '0.875rem', marginTop: '0.25rem' }}>
-            {meta.error}
-          </div>
-        )}
-      </MaskedInputContainer>
-    )
-  }
-  
-      `
-  );
-
-  // criar estilo do MaskedInput
-  await writeFile(
-    path.join(appPath, "src/components/ui/MaskedInput/MaskedInputStyles.ts"),
-    `
-  import { theme } from '@/styles/theme'
-  import { styled } from 'styled-components'
-  
-  export const MaskedInputContainer = styled.div\`
-    width: 100%;
-    input {
-      padding: 8px;
-      width: 100%;
-      height: 40px;
-      border-radius: 8px;
-      border: 2px solid \${theme.colors.baseBlue.light20};
-  
-      &:focus {
-        outline: none;
-        border: 2px solid \${theme.colors.baseBlue.dark};
-      }
-  
-      &.error {
-        border: 2px solid \${theme.colors.baseRed.base};
-        background-color: \${theme.colors.baseRed.light02};
-      }
-    }
-  \`
-  
-      `
-  );
-
-  // cria componente ModalWrapper
-  await writeFile(
-    path.join(appPath, "src/components/ui/ModalWrapper/ModalWrapper.tsx"),
-    `
-  import { AnimatePresence, motion } from "framer-motion";
-  import { ReactNode } from "react";
-  
-  type ModalWrapperProps = {
-    isOpen: boolean;
-    children: ReactNode;
-    onClose: () => void;
-  };
-  
-  export const ModalWrapper = ({ isOpen, children, onClose }: ModalWrapperProps) => {
-    return (
-      <AnimatePresence>
-        {isOpen && (
+export const CartWrapper = ({ isOpen, onClose, children }: CartWrapperProps) => {
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <>
           <motion.div
-            key="modal"
-            initial={{ opacity: 0, y: -30 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -30 }}
-            transition={{ duration: 0.3, ease: "easeInOut" }}
+            key="cart-backdrop"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{
+              duration: 0.3,
+              ease: "easeOut",
+              opacity: {
+                duration: 0.3,
+              },
+              when: "beforeChildren",
+            }}
+            onClick={onClose}
             style={{
               position: "fixed",
               top: 0,
               left: 0,
               width: "100vw",
               height: "100vh",
-              zIndex: 100,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              backgroundColor: "rgba(0, 0, 0, 0.5)",
               backdropFilter: "blur(5px)",
+              zIndex: 99,
+            }}
+          />
+
+          <motion.aside
+            key="cart-panel"
+            initial={{ x: "100%" }}
+            animate={{ x: 0 }}
+            exit={{ x: "100%" }}
+            transition={{ duration: 0.3, ease: "easeInOut" }}
+            style={{
+              position: "fixed",
+              top: 0,
+              right: 0,
+              width: "100%",
+              height: "100vh",
+              display: "flex",
+              justifyContent: "end",
+              zIndex: 100,
             }}
             onClick={onClose}
           >
-            <div onClick={(e) => e.stopPropagation()}>
-              {children}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    );
-  };
-  
-      `
+            <div onClick={(e) => e.stopPropagation()}>{children}</div>
+          </motion.aside>
+        </>
+      )}
+    </AnimatePresence>
+  );
+};
+
+  `
+  );
+
+  //cria componente de ErrorMessage
+  await writeFile(
+    path.join(appPath, "src/components/ui/ErrorMessage/ErrorMessage.tsx"),
+    `
+    import { BiSolidError } from "react-icons/bi";
+import { ErrorMessageContainer, ErrorMessageContent } from "./ErrorMessageStyles";
+
+
+type Props = {
+  message: string
+}
+
+export const ErrorMessage = ({ message }: Props) => (
+  <ErrorMessageContainer role="alert" aria-label="Mensagem de erro" className="container">
+    <ErrorMessageContent>
+      <BiSolidError />
+      {message}
+    </ErrorMessageContent>
+  </ErrorMessageContainer>
+)
+
+  `
+  );
+
+  // cria estilo do ErrorMessage
+  await writeFile(
+    path.join(appPath, "src/components/ui/ErrorMessage/ErrorMessageStyles.ts"),
+    `
+import { theme } from '@/styles/theme';
+import { styled } from 'styled-components';
+
+export const ErrorMessageContainer = styled.div\`\`;
+
+export const ErrorMessageContent = styled.div\`
+  padding: 1rem;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+  font-weight: 500;
+  margin: 1rem;
+  text-align: center;
+  color: \${theme.colors.baseBlue.light40};
+  background-color: \${theme.colors.baseRed.dark08};
+
+  svg {
+    font-size: 2rem;
+    margin-right: 0.5rem;
+  }
+\`;
+`
+  );
+
+  // Cria componente de MaskedInput
+  await writeFile(
+    path.join(appPath, "src/components/ui/MaskedInput/MaskedInput.tsx"),
+    `
+import { useField } from 'formik'
+import { IMaskInput } from 'react-imask'
+import { MaskedInputContainer } from './MaskedInputStyles'
+
+type MaskedInputProps = {
+  name: string
+  mask?: string
+  placeholder?: string
+  className?: string
+  showError?: boolean
+  type?: string
+  id?: string
+}
+
+export const MaskedInput = ({ name, mask, placeholder, className, showError = false, type = 'text', id }: MaskedInputProps) => {
+  const [field, meta, helpers] = useField(name)
+
+  const commonProps = {
+    ...field,
+    placeholder,
+    className,
+    type,
+    id,
+    onBlur: () => helpers.setTouched(true),
+  }
+
+  return (
+    <MaskedInputContainer>
+      {mask ? (
+        <IMaskInput
+          {...commonProps}
+          mask={mask}
+          value={String(field.value ?? '')}
+          onAccept={(value: string) => helpers.setValue(value)}
+        />
+      ) : (
+        <input
+          {...commonProps}
+          value={String(field.value ?? '')}
+          onChange={(e) => helpers.setValue(e.target.value)}
+        />
+      )}
+      {showError && meta.touched && meta.error && (
+        <div style={{ color: 'red', fontSize: '0.875rem', marginTop: '0.25rem' }}>
+          {meta.error}
+        </div>
+      )}
+    </MaskedInputContainer>
+  )
+}
+
+    `
+  );
+
+  // criar estilo do MaskedInput
+  await writeFile(
+    path.join(appPath, "src/components/ui/MaskedInput/MaskedInputStyles.ts"),
+    `
+import { theme } from '@/styles/theme'
+import { styled } from 'styled-components'
+
+export const MaskedInputContainer = styled.div\`
+  width: 100%;
+  input {
+    padding: 8px;
+    width: 100%;
+    height: 40px;
+    border-radius: 8px;
+    border: 2px solid \${theme.colors.baseBlue.light20};
+
+    &:focus {
+      outline: none;
+      border: 2px solid \${theme.colors.baseBlue.dark};
+    }
+
+    &.error {
+      border: 2px solid \${theme.colors.baseRed.base};
+      background-color: \${theme.colors.baseRed.light02};
+    }
+  }
+\`
+
+    `
+  );
+
+  // cria componente ModalWrapper
+  await writeFile(
+    path.join(appPath, "src/components/ui/ModalWrapper/ModalWrapper.tsx"),
+    `
+import { AnimatePresence, motion } from "framer-motion";
+import { ReactNode } from "react";
+
+type ModalWrapperProps = {
+  isOpen: boolean;
+  children: ReactNode;
+  onClose: () => void;
+};
+
+export const ModalWrapper = ({ isOpen, children, onClose }: ModalWrapperProps) => {
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div
+          key="modal"
+          initial={{ opacity: 0, y: -30 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -30 }}
+          transition={{ duration: 0.3, ease: "easeInOut" }}
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            width: "100vw",
+            height: "100vh",
+            zIndex: 100,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            backgroundColor: "rgba(0, 0, 0, 0.5)",
+            backdropFilter: "blur(5px)",
+          }}
+          onClick={onClose}
+        >
+          <div onClick={(e) => e.stopPropagation()}>
+            {children}
+          </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+};
+
+    `
   );
 
   //cria utils de checagem de input
   await writeFile(
     path.join(appPath, "src/utils/maskedInputCheck.ts"),
     `
-  import { FormikProps } from 'formik'
-  
-  export const checkInputHasError = <T>(fieldName: keyof T, form: FormikProps<T>): boolean => {
-    const isTouched = fieldName in form.touched
-    const hasError = fieldName in form.errors
-    return isTouched && hasError
-  }
-      `
+import { FormikProps } from 'formik'
+
+export const checkInputHasError = <T>(fieldName: keyof T, form: FormikProps<T>): boolean => {
+  const isTouched = fieldName in form.touched
+  const hasError = fieldName in form.errors
+  return isTouched && hasError
+}
+    `
   );
 
   //cria o componente AuthProvider
   await writeFile(
     path.join(appPath, "src/components/ui/AuthProvider/AuthProvider.tsx"),
     `
-  'use client'
-  
-  import { useAppDispatch } from '@/hooks/useAppDispatch'
-  import { login, logout } from '@/redux/slices/authSlice'
-  import { useEffect } from 'react'
-  
-  export function AuthProvider() {
-    const dispatch = useAppDispatch()
-  
-    useEffect(() => {
-      const fetchUser = async () => {
-        try {
-          const res = await fetch('/api/auth/verify', {
-            credentials: 'include'
-          })
-  
-          if (res.ok) {
-            const data = await res.json()
-            dispatch(login(data))
-          } else {
-            dispatch(logout())
-          }
-        } catch {
+'use client'
+
+import { useAppDispatch } from '@/hooks/useAppDispatch'
+import { login, logout } from '@/redux/slices/authSlice'
+import { useEffect } from 'react'
+
+export function AuthProvider() {
+  const dispatch = useAppDispatch()
+
+  useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        const res = await fetch('/api/auth/verify', {
+          credentials: 'include'
+        })
+
+        if (res.ok) {
+          const data = await res.json()
+          dispatch(login(data))
+        } else {
           dispatch(logout())
         }
+      } catch {
+        dispatch(logout())
       }
-  
-      fetchUser()
-    }, [dispatch])
-  
-    return null
-  }
-      `
+    }
+
+    fetchUser()
+  }, [dispatch])
+
+  return null
+}
+    `
   );
 
   //cria o arquivo inicial do eslint.config.mjs
   await writeFile(
     path.join(appPath, ".eslintrc.mjs"),
     `
-  import { FlatCompat } from '@eslint/eslintrc'
-  import { dirname } from 'path'
-  import { fileURLToPath } from 'url'
-  
-  //manter este arquivo e remover o arquivo eslint.config criado pelo create-next-app
-  
-  const __filename = fileURLToPath(import.meta.url)
-  const __dirname = dirname(__filename)
-  
-  const compat = new FlatCompat({
-    baseDirectory: __dirname
-  })
-  
-  const config = [
-    {
-      ignores: ['src/generated/**']
-    },
-    ...compat.extends('next/core-web-vitals', 'next/typescript')
-  ]
-  
-  export default config
-  
-      `
+import { FlatCompat } from '@eslint/eslintrc'
+import { dirname } from 'path'
+import { fileURLToPath } from 'url'
+
+//manter este arquivo e remover o arquivo eslint.config criado pelo create-next-app
+
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = dirname(__filename)
+
+const compat = new FlatCompat({
+  baseDirectory: __dirname
+})
+
+const config = [
+  {
+    ignores: ['src/generated/**']
+  },
+  ...compat.extends('next/core-web-vitals', 'next/typescript')
+]
+
+export default config
+
+    `
   );
 
   // Criar arquivos específicos baseados na escolha
@@ -1195,22 +1178,22 @@ export async function createProject(config) {
   await writeFile(
     path.join(appPath, "src/components/providers.tsx"),
     `
-  'use client'
-  
-  import { store } from '@/redux/store'
-  import { ReactNode } from 'react'
-  import { Provider } from 'react-redux'
-  import { AuthProvider } from './ui/AuthProvider/AuthProvider'
-  
-  export function Providers({ children }: { children: ReactNode }) {
-    return (
-      <Provider store={store}>
-        <AuthProvider />
-        {children}
-      </Provider>
-    )
-  }
-    `
+'use client'
+
+import { store } from '@/redux/store'
+import { ReactNode } from 'react'
+import { Provider } from 'react-redux'
+import { AuthProvider } from './ui/AuthProvider/AuthProvider'
+
+export function Providers({ children }: { children: ReactNode }) {
+  return (
+    <Provider store={store}>
+      <AuthProvider />
+      {children}
+    </Provider>
+  )
+}
+  `
   );
 
   // Redux Store baseado na escolha de testes
@@ -1218,131 +1201,131 @@ export async function createProject(config) {
     await writeFile(
       path.join(appPath, "src/redux/store.ts"),
       `// 🏪 REDUX STORE - Configuração do gerenciamento de estado com preloaded state para testes
-  
-  import { configureStore } from '@reduxjs/toolkit'
-  import authReducer from './slices/authSlice'
-  
-  export const store = configureStore({
-    reducer: {
-      auth: authReducer
-    }
-  })
-  
-  export type RootState = ReturnType<typeof store.getState>
-  export type AppDispatch = typeof store.dispatch
-  `
+
+import { configureStore } from '@reduxjs/toolkit'
+import authReducer from './slices/authSlice'
+
+export const store = configureStore({
+  reducer: {
+    auth: authReducer
+  }
+})
+
+export type RootState = ReturnType<typeof store.getState>
+export type AppDispatch = typeof store.dispatch
+`
     );
 
     // AuthSlice para testes
     await writeFile(
       path.join(appPath, "src/redux/slices/authSlice.ts"),
       `// 🔐 AUTH SLICE - Gerenciamento de estado de autenticação
-  
-  import { createSlice, PayloadAction } from '@reduxjs/toolkit'
-  
-  interface AuthState {
-    user: {
-      id: string
-      name: string
-      email: string
-    } | null
-    isAuthenticated: boolean
-    loading: boolean
-  }
-  
-  const initialState: AuthState = {
-    user: null,
-    isAuthenticated: false,
-    loading: false
-  }
-  
-  const authSlice = createSlice({
-    name: 'auth',
-    initialState,
-    reducers: {
-      loginStart: (state) => {
-        state.loading = true
-      },
-      loginSuccess: (state, action: PayloadAction<{ id: string; name: string; email: string }>) => {
-        state.loading = false
-        state.isAuthenticated = true
-        state.user = action.payload
-      },
-      loginFailure: (state) => {
-        state.loading = false
-        state.isAuthenticated = false
-        state.user = null
-      },
-      logout: (state) => {
-        state.isAuthenticated = false
-        state.user = null
-        state.loading = false
-      }
+
+import { createSlice, PayloadAction } from '@reduxjs/toolkit'
+
+interface AuthState {
+  user: {
+    id: string
+    name: string
+    email: string
+  } | null
+  isAuthenticated: boolean
+  loading: boolean
+}
+
+const initialState: AuthState = {
+  user: null,
+  isAuthenticated: false,
+  loading: false
+}
+
+const authSlice = createSlice({
+  name: 'auth',
+  initialState,
+  reducers: {
+    loginStart: (state) => {
+      state.loading = true
+    },
+    loginSuccess: (state, action: PayloadAction<{ id: string; name: string; email: string }>) => {
+      state.loading = false
+      state.isAuthenticated = true
+      state.user = action.payload
+    },
+    loginFailure: (state) => {
+      state.loading = false
+      state.isAuthenticated = false
+      state.user = null
+    },
+    logout: (state) => {
+      state.isAuthenticated = false
+      state.user = null
+      state.loading = false
     }
-  })
-  
-  export const { loginStart, loginSuccess, loginFailure, logout } = authSlice.actions
-  export default authSlice.reducer
-  `
+  }
+})
+
+export const { loginStart, loginSuccess, loginFailure, logout } = authSlice.actions
+export default authSlice.reducer
+`
     );
   } else {
     await writeFile(
       path.join(appPath, "src/redux/store.ts"),
       `// 🏪 REDUX STORE - Configuração simples do gerenciamento de estado
-  
-  import { configureStore } from '@reduxjs/toolkit'
-  import authReducer from './slices/authSlice'
-  
-  export const store = configureStore({
-    reducer: {
-      auth: authReducer
-    }
-  })
-  
-  export type RootState = ReturnType<typeof store.getState>
-  export type AppDispatch = typeof store.dispatch
-  `
+
+import { configureStore } from '@reduxjs/toolkit'
+import authReducer from './slices/authSlice'
+
+export const store = configureStore({
+  reducer: {
+    auth: authReducer
+  }
+})
+
+export type RootState = ReturnType<typeof store.getState>
+export type AppDispatch = typeof store.dispatch
+`
     );
 
     // AuthSlice simples
     await writeFile(
       path.join(appPath, "src/redux/slices/authSlice.ts"),
       `// 🔐 AUTH SLICE - Gerenciamento de estado de autenticação
-  
-  import { createSlice, PayloadAction } from '@reduxjs/toolkit'
-  
-  interface AuthState {
-    user: {
-      id: string
-      name: string
-      email: string
-    } | null
-    isAuthenticated: boolean
-  }
-  
-  const initialState: AuthState = {
-    user: null,
-    isAuthenticated: false
-  }
-  
-  const authSlice = createSlice({
-    name: 'auth',
-    initialState,
-    reducers: {
-      loginSuccess: (state, action: PayloadAction<{ id: string; name: string; email: string }>) => {
-        state.isAuthenticated = true
-        state.user = action.payload
-      },
-      logout: (state) => {
-        state.isAuthenticated = false
-        state.user = null
-      }
+
+import { createSlice, PayloadAction } from '@reduxjs/toolkit'
+
+interface AuthState {
+  user: {
+    id: string
+    name: string
+    email: string
+  } | null
+  isAuthenticated: boolean
+}
+
+const initialState: AuthState = {
+  user: null,
+  isAuthenticated: false
+}
+
+const authSlice = createSlice({
+  name: 'auth',
+  initialState,
+  reducers: {
+    loginSuccess: (state, action: PayloadAction<{ id: string; name: string; email: string }>) => {
+      state.isAuthenticated = true
+      state.user = action.payload
+    },
+    logout: (state) => {
+      state.isAuthenticated = false
+      state.user = null
     }
-  })
-  
-  export const { loginSuccess, logout } = authSlice.actions
-  export default authSlice.reducer
-  `
+  }
+})
+
+export const { loginSuccess, logout } = authSlice.actions
+export default authSlice.reducer
+`
     );
   }
 
@@ -1351,300 +1334,300 @@ export async function createProject(config) {
     console.log("🗄️ Configurando Prisma...");
 
     // Executar prisma init
-    execCommand("npx prisma init");
+    execCommand("npx prisma init", appPath);
 
     // Schema do Prisma com comentários
     await writeFile(
       path.join(appPath, "prisma/schema.prisma"),
       `// 🗄️ PRISMA SCHEMA - Configuração do banco de dados
-  // Este arquivo define a estrutura do seu banco de dados
-  
-  // Configuração do gerador do Prisma Client
-  generator client {
-    provider = "prisma-client-js"
-  }
-  
-  // Configuração da conexão com o banco de dados
-  datasource db {
-    provider = "mysql"
-    url      = env("DATABASE_URL")
-  }
-  
-  // 👤 MODEL USER - Modelo básico de usuário
-  model User {
-    id        String   @id @default(cuid())
-    email     String   @unique
-    name      String?
-    password  String
-    createdAt DateTime @default(now())
-    updatedAt DateTime @updatedAt
-  
-    @@map("users")
-  }
-  
-  // 📝 COMO USAR ESTE ARQUIVO:
-  // 
-  // 1. Configure sua DATABASE_URL no arquivo .env
-  //    Exemplo: DATABASE_URL="mysql://username:password@localhost:3306/database_name"
-  //
-  // 2. Para criar o banco de dados e tabelas:
-  //    npx prisma db push
-  //
-  // 3. Para gerar o Prisma Client:
-  //    npx prisma generate
-  //
-  // 4. Para visualizar o banco no Prisma Studio:
-  //    npx prisma studio
-  //
-  // 5. Para usar um banco existente:
-  //    npx prisma db pull (puxa a estrutura do banco existente)
-  //    npx prisma generate (gera o client baseado na estrutura)
-  //
-  // 6. Para criar e aplicar migrations:
-  //    npx prisma migrate dev --name init
-  //
-  // 📚 DOCUMENTAÇÃO: https://www.prisma.io/docs
-  `
+// Este arquivo define a estrutura do seu banco de dados
+
+// Configuração do gerador do Prisma Client
+generator client {
+  provider = "prisma-client-js"
+}
+
+// Configuração da conexão com o banco de dados
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// 👤 MODEL USER - Modelo básico de usuário
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  password  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("users")
+}
+
+// 📝 COMO USAR ESTE ARQUIVO:
+// 
+// 1. Configure sua DATABASE_URL no arquivo .env
+//    Exemplo: DATABASE_URL="mysql://username:password@localhost:3306/database_name"
+//
+// 2. Para criar o banco de dados e tabelas:
+//    npx prisma db push
+//
+// 3. Para gerar o Prisma Client:
+//    npx prisma generate
+//
+// 4. Para visualizar o banco no Prisma Studio:
+//    npx prisma studio
+//
+// 5. Para usar um banco existente:
+//    npx prisma db pull (puxa a estrutura do banco existente)
+//    npx prisma generate (gera o client baseado na estrutura)
+//
+// 6. Para criar e aplicar migrations:
+//    npx prisma migrate dev --name init
+//
+// 📚 DOCUMENTAÇÃO: https://www.prisma.io/docs
+`
     );
 
     // Arquivo de configuração do Prisma Client
     await writeFile(
       path.join(appPath, "src/lib/prisma.ts"),
       `
-  import { PrismaClient } from '@/generated/prisma'
-  
-  const globalForPrisma = globalThis as unknown as {
-    prisma: PrismaClient | undefined
-  }
-  
-  export const prisma =
-    globalForPrisma.prisma ??
-    new PrismaClient({
-      datasources: {
-        db: {
-          url: process.env.DATABASE_URL
-        }
+import { PrismaClient } from '@/generated/prisma'
+
+const globalForPrisma = globalThis as unknown as {
+  prisma: PrismaClient | undefined
+}
+
+export const prisma =
+  globalForPrisma.prisma ??
+  new PrismaClient({
+    datasources: {
+      db: {
+        url: process.env.DATABASE_URL
       }
-    })
-  
-  if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma
-  
-        `
+    }
+  })
+
+if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma
+
+      `
     );
 
     //Cria arquivo middleware.ts na raiz do projeto
     await writeFile(
       path.join(appPath, "middleware.ts"),
       `
-  import jwt from 'jsonwebtoken'
-  import { NextRequest, NextResponse } from 'next/server'
-  
-  const publicRoutes = ['/', '/sign-in', '/register', '/pricing', '/allGames', '/gameDetails', '/checkout']
-  
-  const JWT_SECRET = process.env.JWT_SECRET!
-  const REDIRECT_WHEN_NOT_AUTHENTICATED = '/sign-in'
-  
-  function redirectTo(path: string, request: NextRequest) {
-    const url = request.nextUrl.clone()
-    url.pathname = path
-    return NextResponse.redirect(url)
-  }
-  
-  export function middleware(request: NextRequest) {
-    const path = request.nextUrl.pathname
-    const isPublic = publicRoutes.includes(path)
-    const token = request.cookies.get('token')?.value
-  
-    let isAuthenticated = false
-  
-    if (token) {
-      try {
-        jwt.verify(token, JWT_SECRET)
-        isAuthenticated = true
-      } catch (err) {
-        console.error('Token inválido:', err)
-      }
+import jwt from 'jsonwebtoken'
+import { NextRequest, NextResponse } from 'next/server'
+
+const publicRoutes = ['/', '/sign-in', '/register', '/pricing', '/allGames', '/gameDetails', '/checkout']
+
+const JWT_SECRET = process.env.JWT_SECRET!
+const REDIRECT_WHEN_NOT_AUTHENTICATED = '/sign-in'
+
+function redirectTo(path: string, request: NextRequest) {
+  const url = request.nextUrl.clone()
+  url.pathname = path
+  return NextResponse.redirect(url)
+}
+
+export function middleware(request: NextRequest) {
+  const path = request.nextUrl.pathname
+  const isPublic = publicRoutes.includes(path)
+  const token = request.cookies.get('token')?.value
+
+  let isAuthenticated = false
+
+  if (token) {
+    try {
+      jwt.verify(token, JWT_SECRET)
+      isAuthenticated = true
+    } catch (err) {
+      console.error('Token inválido:', err)
     }
-  
-    if (!isAuthenticated && !isPublic) {
-      return redirectTo(REDIRECT_WHEN_NOT_AUTHENTICATED, request)
-    }
-  
-    if (isAuthenticated && (path === '/sign-in' || path === '/register')) {
-      return redirectTo('/', request)
-    }
-  
-    return NextResponse.next()
   }
-  
-  export const config = {
-    matcher: ['/((?!_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt|api/).*)']
+
+  if (!isAuthenticated && !isPublic) {
+    return redirectTo(REDIRECT_WHEN_NOT_AUTHENTICATED, request)
   }
-      `
+
+  if (isAuthenticated && (path === '/sign-in' || path === '/register')) {
+    return redirectTo('/', request)
+  }
+
+  return NextResponse.next()
+}
+
+export const config = {
+  matcher: ['/((?!_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt|api/).*)']
+}
+    `
     );
 
     // .env file
     await writeFile(
       path.join(appPath, ".env"),
       `
-  DATABASE_URL="prisma+postgres://accelerate.prisma-data.net/?api_key=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqd3RfaWQiOjEsInNlY3VyZV9rZXkiOiJza19ybXBkcEV4N0R6MG9RYllRNDlCdUMiLCJhcGlfa2V5IjoiMDFLMVJIUzk0NEozMTFaQVNUSFdETldTSjkiLCJ0ZW5hbnRfaWQiOiJjNTQ5MTU4ZmQ3NGJkNTFmNjc5OGUwOTZjOWIxOThkNjIwZmMwYTU1NjU1MTEyMWFkMTUzYzc0NmQ1OGQyZGYzIiwiaW50ZXJuYWxfc2VjcmV0IjoiM2UyNWZiMzAtZDZkNS00ZWE0LTg5NjEtZjkwNDQ0NjZjZjUxIn0.EYn7alhEwVNOUCH5nAq4NiUKNOi0CUIyT0iBHORaHEc"
-  
-  JWT_SECRET=alguma-coisa-bem-secreta
-  
-  
-      `
+DATABASE_URL="prisma+postgres://accelerate.prisma-data.net/?api_key=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqd3RfaWQiOjEsInNlY3VyZV9rZXkiOiJza19ybXBkcEV4N0R6MG9RYllRNDlCdUMiLCJhcGlfa2V5IjoiMDFLMVJIUzk0NEozMTFaQVNUSFdETldTSjkiLCJ0ZW5hbnRfaWQiOiJjNTQ5MTU4ZmQ3NGJkNTFmNjc5OGUwOTZjOWIxOThkNjIwZmMwYTU1NjU1MTEyMWFkMTUzYzc0NmQ1OGQyZGYzIiwiaW50ZXJuYWxfc2VjcmV0IjoiM2UyNWZiMzAtZDZkNS00ZWE0LTg5NjEtZjkwNDQ0NjZjZjUxIn0.EYn7alhEwVNOUCH5nAq4NiUKNOi0CUIyT0iBHORaHEc"
+
+JWT_SECRET=alguma-coisa-bem-secreta
+
+
+    `
     );
 
     // cria o arquivo src/app/api/auth/login/route.ts
     await writeFile(
       path.join(appPath, "src/app/api/auth/login/route.ts"),
       `
-  import { prisma } from '@/utils/prisma'
-  import bcrypt from 'bcryptjs'
-  import { serialize } from 'cookie'
-  import jwt from 'jsonwebtoken'
-  import { NextResponse } from 'next/server'
-  
-  export async function POST(req: Request) {
-    try {
-      const { email, password } = await req.json()
-  
-      const user = await prisma.user.findUnique({ where: { email } })
-  
-      if (!user) {
-        return NextResponse.json({ message: 'Credenciais inválidas' }, { status: 401 })
-      }
-  
-      const passwordMatch = await bcrypt.compare(password, user.password)
-  
-      if (!passwordMatch) {
-        return NextResponse.json({ message: 'Credenciais inválidas' }, { status: 401 })
-      }
-  
-      const token = jwt.sign({ id: user.id, name: user.name, email: user.email }, process.env.JWT_SECRET!, { expiresIn: '7d' })
-  
-      const serialized = serialize('token', token, {
-        secure: process.env.NODE_ENV === 'production',
-        httpOnly: true,
-        sameSite: 'lax',
-        path: '/',
-        maxAge: 60 * 60 * 24 * 7 // 7 dias
-      })
-  
-      const response = new NextResponse(JSON.stringify({ message: 'Login bem-sucedido', user }), {
-        status: 200
-      })
-  
-      response.headers.set('Set-Cookie', serialized)
-  
-      return response
-    } catch (error) {
-      console.error('Erro no login:', error)
-      return NextResponse.json({ message: 'Erro interno no servidor' }, { status: 500 })
+import { prisma } from '@/utils/prisma'
+import bcrypt from 'bcryptjs'
+import { serialize } from 'cookie'
+import jwt from 'jsonwebtoken'
+import { NextResponse } from 'next/server'
+
+export async function POST(req: Request) {
+  try {
+    const { email, password } = await req.json()
+
+    const user = await prisma.user.findUnique({ where: { email } })
+
+    if (!user) {
+      return NextResponse.json({ message: 'Credenciais inválidas' }, { status: 401 })
     }
+
+    const passwordMatch = await bcrypt.compare(password, user.password)
+
+    if (!passwordMatch) {
+      return NextResponse.json({ message: 'Credenciais inválidas' }, { status: 401 })
+    }
+
+    const token = jwt.sign({ id: user.id, name: user.name, email: user.email }, process.env.JWT_SECRET!, { expiresIn: '7d' })
+
+    const serialized = serialize('token', token, {
+      secure: process.env.NODE_ENV === 'production',
+      httpOnly: true,
+      sameSite: 'lax',
+      path: '/',
+      maxAge: 60 * 60 * 24 * 7 // 7 dias
+    })
+
+    const response = new NextResponse(JSON.stringify({ message: 'Login bem-sucedido', user }), {
+      status: 200
+    })
+
+    response.headers.set('Set-Cookie', serialized)
+
+    return response
+  } catch (error) {
+    console.error('Erro no login:', error)
+    return NextResponse.json({ message: 'Erro interno no servidor' }, { status: 500 })
   }
-  
-      `
+}
+
+    `
     );
 
     // cria o arquivo src/app/api/auth/logout/route.ts
     await writeFile(
       path.join(appPath, "src/app/api/auth/logout/route.ts"),
       `
-  import { serialize } from 'cookie'
-  import { NextResponse } from 'next/server'
-  
-  export async function POST() {
-    const response = NextResponse.json({ success: true })
-    response.headers.set(
-      'Set-Cookie',
-      serialize('token', '', {
-        secure: process.env.NODE_ENV === 'production',
-        httpOnly: true,
-        sameSite: 'lax',
-        path: '/',
-        maxAge: 60 * 60 * 24 * 7 // 7 dias
-      })
-    )
-    return response
-  }
-  
-      `
+import { serialize } from 'cookie'
+import { NextResponse } from 'next/server'
+
+export async function POST() {
+  const response = NextResponse.json({ success: true })
+  response.headers.set(
+    'Set-Cookie',
+    serialize('token', '', {
+      secure: process.env.NODE_ENV === 'production',
+      httpOnly: true,
+      sameSite: 'lax',
+      path: '/',
+      maxAge: 60 * 60 * 24 * 7 // 7 dias
+    })
+  )
+  return response
+}
+
+    `
     );
 
     // cria o arquivo src/app/api/auth/register/route.ts
     await writeFile(
       path.join(appPath, "src/app/api/auth/register/route.ts"),
       `
-  import { prisma } from '@/utils/prisma'
-  import jwt from 'jsonwebtoken'
-  import { NextRequest, NextResponse } from 'next/server'
-  
-  export async function GET(req: NextRequest) {
-    try {
-      const token = req.cookies.get('token')?.value
-  
-      if (!token) {
-        return NextResponse.json({ message: 'Unauthorized' }, { status: 401 })
-      }
-  
-      const secret = process.env.JWT_SECRET!
-      const decoded = jwt.verify(token, secret) as { id: number }
-  
-      const user = await prisma.user.findUnique({
-        where: { id: decoded.id },
-        select: { id: true, name: true, email: true }
-      })
-  
-      if (!user) {
-        return NextResponse.json({ message: 'User not found' }, { status: 404 })
-      }
-  
-      return NextResponse.json(user, { status: 200 })
-    } catch (error) {
-      console.error('Erro na verificação do token:', error)
-      return NextResponse.json({ message: 'Invalid token' }, { status: 401 })
+import { prisma } from '@/utils/prisma'
+import jwt from 'jsonwebtoken'
+import { NextRequest, NextResponse } from 'next/server'
+
+export async function GET(req: NextRequest) {
+  try {
+    const token = req.cookies.get('token')?.value
+
+    if (!token) {
+      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 })
     }
+
+    const secret = process.env.JWT_SECRET!
+    const decoded = jwt.verify(token, secret) as { id: number }
+
+    const user = await prisma.user.findUnique({
+      where: { id: decoded.id },
+      select: { id: true, name: true, email: true }
+    })
+
+    if (!user) {
+      return NextResponse.json({ message: 'User not found' }, { status: 404 })
+    }
+
+    return NextResponse.json(user, { status: 200 })
+  } catch (error) {
+    console.error('Erro na verificação do token:', error)
+    return NextResponse.json({ message: 'Invalid token' }, { status: 401 })
   }
-      `
+}
+    `
     );
 
     // cria o arquivo src/app/api/auth/verify/route.ts
     await writeFile(
       path.join(appPath, "src/app/api/auth/verify/route.ts"),
       `
-  import { prisma } from '@/utils/prisma'
-  import jwt from 'jsonwebtoken'
-  import { NextRequest, NextResponse } from 'next/server'
-  
-  export async function GET(req: NextRequest) {
-    try {
-      const token = req.cookies.get('token')?.value
-  
-      if (!token) {
-        return NextResponse.json({ message: 'Unauthorized' }, { status: 401 })
-      }
-  
-      const secret = process.env.JWT_SECRET!
-      const decoded = jwt.verify(token, secret) as { id: number }
-  
-      const user = await prisma.user.findUnique({
-        where: { id: decoded.id },
-        select: { id: true, name: true, email: true }
-      })
-  
-      if (!user) {
-        return NextResponse.json({ message: 'User not found' }, { status: 404 })
-      }
-  
-      return NextResponse.json(user, { status: 200 })
-    } catch (error) {
-      console.error('Erro na verificação do token:', error)
-      return NextResponse.json({ message: 'Invalid token' }, { status: 401 })
+import { prisma } from '@/utils/prisma'
+import jwt from 'jsonwebtoken'
+import { NextRequest, NextResponse } from 'next/server'
+
+export async function GET(req: NextRequest) {
+  try {
+    const token = req.cookies.get('token')?.value
+
+    if (!token) {
+      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 })
     }
+
+    const secret = process.env.JWT_SECRET!
+    const decoded = jwt.verify(token, secret) as { id: number }
+
+    const user = await prisma.user.findUnique({
+      where: { id: decoded.id },
+      select: { id: true, name: true, email: true }
+    })
+
+    if (!user) {
+      return NextResponse.json({ message: 'User not found' }, { status: 404 })
+    }
+
+    return NextResponse.json(user, { status: 200 })
+  } catch (error) {
+    console.error('Erro na verificação do token:', error)
+    return NextResponse.json({ message: 'Invalid token' }, { status: 401 })
   }
-  
-      `
+}
+
+    `
     );
   }
 

@@ -1,10 +1,10 @@
 import { execCommand } from "./execCommand.js";
 
-export function installDependencies(prodDeps, devDeps) {
-  if (prodDeps.length) {
-    execCommand(`npm install ${prodDeps.join(" ")} --save`);
+export function installDependencies(prodDeps, devDeps, cwd) {
+  if (prodDeps.length > 0) {
+    execCommand(`npm install ${prodDeps.join(" ")}`, cwd);
   }
-  if (devDeps.length) {
-    execCommand(`npm install ${devDeps.join(" ")} --save-dev`);
+  if (devDeps.length > 0) {
+    execCommand(`npm install --save-dev ${devDeps.join(" ")}`, cwd);
   }
 }

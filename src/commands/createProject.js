@@ -1099,7 +1099,7 @@ export const checkInputHasError = <T>(fieldName: keyof T, form: FormikProps<T>):
 
   //cria o componente AuthProvider
   await writeFile(
-    path.join(appPath, "src/components/providers/AuthProvider.tsx"),
+    path.join(appPath, "src/components/ui/AuthProvider/AuthProvider.tsx"),
     `
 'use client'
 
@@ -1411,46 +1411,6 @@ export const prisma =
 if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma
 
       `
-    );
-
-    //cria o componente AuthProvider
-    await writeFile(
-      path.join(appPath, "src/components/providers/AuthProvider.tsx"),
-      `
-'use client'
-
-import { useAppDispatch } from '@/hooks/useAppDispatch'
-import { login, logout } from '@/redux/slices/authSlice'
-import { useEffect } from 'react'
-
-export function AuthProvider() {
-  const dispatch = useAppDispatch()
-
-  useEffect(() => {
-    const fetchUser = async () => {
-      try {
-        const res = await fetch('/api/auth/verify', {
-          credentials: 'include'
-        })
-
-        if (res.ok) {
-          const data = await res.json()
-          dispatch(login(data))
-        } else {
-          dispatch(logout())
-        }
-      } catch {
-        dispatch(logout())
-      }
-    }
-
-    fetchUser()
-  }, [dispatch])
-
-  return null
-}
-
-    `
     );
 
     //Cria arquivo middleware.ts na raiz do projeto

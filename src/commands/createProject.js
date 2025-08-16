@@ -116,7 +116,6 @@ export async function createProject(config) {
   if (installTests) folders.push("__tests__", "src/__tests__");
   if (installBackend)
     folders.push(
-      "prisma",
       "src/app/api",
       "src/app/api/auth/login",
       "src/app/api/auth/signup",

@@ -602,7 +602,6 @@ export const Button = forwardRef<
 
     const content = (
       <StyledButton
-        as={(props as AnchorProps).href ? "a" : "button"}
         ref={ref as any}
         $variant={variant}
         $size={size}

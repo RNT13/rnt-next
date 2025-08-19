@@ -730,8 +730,8 @@ const buttonVariants = {
     border: 2px solid transparent;
 
     &:hover:not(:disabled) {
-      background-color: ${({ theme }) => theme.colors.gray2};
-      transform: translateY(-1px);
+      background-color: transparent;
+      transform: translateY(-2px);
     }
 
     &:active:not(:disabled) {

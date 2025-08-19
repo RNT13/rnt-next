@@ -735,7 +735,7 @@ const buttonVariants = {
     }
 
     &:active:not(:disabled) {
-      background-color: ${({ theme }) => theme.colors.gray};
+      background-color: transparent;
       transform: translateY(0);
     }
   \`,
@@ -842,25 +842,27 @@ export const StyledButton = styled.button<StyledButtonProps>\`
       }
     `}
 
-  &::after {
-    content: '';
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    width: 0;
-    height: 0;
-    border-radius: 50%;
-    background: rgba(255, 255, 255, 0.3);
-    transform: translate(-50%, -50%);
-    transition:
-      width 0.3s,
-      height 0.3s;
-  }
+  ${({ $variant }) =>
+    $variant !== "ghost" &&
+    css`
+      &::after {
+        content: "";
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 0;
+        height: 0;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.3);
+        transform: translate(-50%, -50%);
+        transition: width 0.3s, height 0.3s;
+      }
 
-  &:active:not(:disabled)::after {
-    width: 300px;
-    height: 300px;
-  }
+      &:active:not(:disabled)::after {
+        width: 300px;
+        height: 300px;
+      }
+    `}
 
   &:focus-visible {
     outline: 2px solid ${theme.colors.baseBlue.base};

@@ -261,7 +261,7 @@ import { ColorVariants } from '@/utils/colorUtils'
 import 'styled-components'
 
 declare module 'styled-components' {
-  export interface DefaultTheme {
+  export interface DefaultTheme extends DefaultTheme {
     colors: {
       baseBlue: ColorVariants
       baseGreen: ColorVariants

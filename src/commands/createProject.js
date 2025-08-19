@@ -76,7 +76,8 @@ export async function createProject(config) {
     devDependencies.push(
       "@types/jsonwebtoken",
       "@types/bcryptjs",
-      "@types/cookie"
+      "@types/cookie",
+      "@types/react-icons"
     );
   }
 

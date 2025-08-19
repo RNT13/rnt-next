@@ -256,6 +256,49 @@ module.exports = createJestConfig(customJestConfig)
  * - Enums e constantes tipadas
  */
 
+import { ColorVariants } from '@/utils/colorUtils'
+import 'styled-components'
+
+declare module 'styled-components' {
+  export interface DefaultTheme {
+    colors: {
+      baseBlue: ColorVariants
+      baseGreen: ColorVariants
+      baseRed: ColorVariants
+      baseCyan: ColorVariants
+
+      // cores estáticas
+      primaryColor: string
+      secondaryColor: string
+      thirdColor: string
+      forthColor: string
+      textColor: string
+
+      yellow: string
+      yellow2: string
+      blue: string
+      blue2: string
+      gray: string
+      gray2: string
+      orange: string
+      orange2: string
+      black: string
+      red: string
+      redHover: string
+      error: string
+      green: string
+      green2: string
+      neonBlue: string
+      neonGree: string
+
+      // suporte a nested objects (como neon no darkTheme)
+      neon?: {
+        [key: string]: string
+      }
+    }
+  }
+}
+
 // Exemplo: Tipos de usuário
 export interface User {
   id: string;
@@ -395,6 +438,7 @@ export function colorHSLVariants(h: number, s: number, l: number) {
     `// 🎨 ARQUIVO DE TEMA - Configurações de cores e breakpoints do projeto
 
 import { colorHSLVariants } from '@/utils/colorUtils'
+import { DefaultTheme } from 'styled-components'
 
 export const media = {
   pc: '@media (max-width: 1024px)',
@@ -411,12 +455,12 @@ export const baseGreen = colorHSLVariants(100, 100, 50)
 export const baseRed = colorHSLVariants(0, 100, 50)
 export const baseCyan = colorHSLVariants(180, 150, 50)
 
-export const theme = {
+export const theme: DefaultTheme = {
   colors: {
-    baseBlue: baseBlue,
-    baseGreen: baseGreen,
-    baseRed: baseRed,
-    baseCyan: baseCyan,
+    baseBlue,
+    baseGreen,
+    baseRed,
+    baseCyan,
     primaryColor: '#011627',
     secondaryColor: '#023864',
     thirdColor: '#0d6efd',
@@ -531,6 +575,7 @@ export interface CommonButtonProps {
   leftIcon?: React.ReactNode;
   rightIcon?: React.ReactNode;
   children?: React.ReactNode;
+  disabled?: boolean;
 }
 
 export type ButtonProps = CommonButtonProps & (AnchorProps | NativeButtonProps);
@@ -577,7 +622,7 @@ export const Button = forwardRef<
 
     if ((props as AnchorProps).href) {
       return (
-        <Link href={(props as AnchorProps).href} passHref legacyBehavior>
+        <Link href={(props as AnchorProps).href} passHref>
           {content}
         </Link>
       );
@@ -595,122 +640,123 @@ export default Button;
 
   // Cria estilos do Botão
   await writeFile(
-    path.join(appPath, "src/components/ui/Button/ButtonStyles.ts"),
-    String.raw`
-import styled, { css } from 'styled-components';
+    path.join(appPath, "src/components/ui/Button/ButtonStyles.tsx"),
+    `
+import { media, theme } from '@/styles/theme'
+import styled, { css } from 'styled-components'
 
 interface StyledButtonProps {
-  $variant: 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger';
-  $size: 'sm' | 'md' | 'lg';
-  $loading: boolean;
-  $fullWidth: boolean;
+  $variant: 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger'
+  $size: 'sm' | 'md' | 'lg'
+  $loading: boolean
+  $fullWidth: boolean
 }
 
 const buttonVariants = {
   primary: css\`
-    background-color: \${({ theme }) => theme.colors.primary.base};
-    color: \${({ theme }) => theme.colors.white};
-    border: 2px solid \${({ theme }) => theme.colors.primary.base};
-    
+    background-color: ${({ theme }) => theme.colors.baseBlue.base};
+    color: ${({ theme }) => theme.colors.textColor};
+    border: 2px solid ${theme.colors.baseBlue.base};
+
     &:hover:not(:disabled) {
-      background-color: \${({ theme }) => theme.colors.primary.dark};
-      border-color: \${({ theme }) => theme.colors.primary.dark};
+      background-color: ${({ theme }) => theme.colors.baseBlue.dark};
+      border-color: ${({ theme }) => theme.colors.baseBlue.dark};
       transform: translateY(-1px);
     }
-    
+
     &:active:not(:disabled) {
-      background-color: \${({ theme }) => theme.colors.primary.dark20};
+      background-color: ${({ theme }) => theme.colors.baseBlue.dark20};
       transform: translateY(0);
     }
   \`,
-  
+
   secondary: css\`
-    background-color: \${({ theme }) => theme.colors.secondary.base};
-    color: \${({ theme }) => theme.colors.white};
-    border: 2px solid \${({ theme }) => theme.colors.secondary.base};
-    
+    background-color: ${({ theme }) => theme.colors.baseGreen.base};
+    color: ${({ theme }) => theme.colors.textColor};
+    border: 2px solid ${({ theme }) => theme.colors.baseGreen.base};
+
     &:hover:not(:disabled) {
-      background-color: \${({ theme }) => theme.colors.secondary.dark};
-      border-color: \${({ theme }) => theme.colors.secondary.dark};
+      background-color: ${({ theme }) => theme.colors.baseGreen.dark};
+      border-color: ${({ theme }) => theme.colors.baseGreen.dark};
       transform: translateY(-1px);
     }
-    
+
     &:active:not(:disabled) {
-      background-color: \${({ theme }) => theme.colors.secondary.dark20};
+      background-color: ${({ theme }) => theme.colors.baseGreen.dark20};
       transform: translateY(0);
     }
   \`,
-  
+
   outline: css\`
     background-color: transparent;
-    color: \${({ theme }) => theme.colors.primary.base};
-    border: 2px solid \${({ theme }) => theme.colors.primary.base};
-    
+    color: ${({ theme }) => theme.colors.baseBlue.base};
+    border: 2px solid ${({ theme }) => theme.colors.baseBlue.base};
+
     &:hover:not(:disabled) {
-      background-color: \${({ theme }) => theme.colors.primary.base};
-      color: \${({ theme }) => theme.colors.white};
+      background-color: ${({ theme }) => theme.colors.baseBlue.base};
+      color: ${({ theme }) => theme.colors.textColor};
       transform: translateY(-1px);
     }
-    
+
     &:active:not(:disabled) {
-      background-color: \${({ theme }) => theme.colors.primary.dark};
+      background-color: ${({ theme }) => theme.colors.baseBlue.dark};
       transform: translateY(0);
     }
   \`,
-  
+
   ghost: css\`
     background-color: transparent;
-    color: \${({ theme }) => theme.colors.text.primary};
+    color: ${({ theme }) => theme.colors.textColor};
     border: 2px solid transparent;
-    
+
     &:hover:not(:disabled) {
-      background-color: \${({ theme }) => theme.colors.gray.light40};
+      background-color: ${({ theme }) => theme.colors.gray2};
       transform: translateY(-1px);
     }
-    
+
     &:active:not(:disabled) {
-      background-color: \${({ theme }) => theme.colors.gray.light30};
+      background-color: ${({ theme }) => theme.colors.gray};
       transform: translateY(0);
     }
   \`,
-  
+
   danger: css\`
-    background-color: \${({ theme }) => theme.colors.error.base};
-    color: \${({ theme }) => theme.colors.white};
-    border: 2px solid \${({ theme }) => theme.colors.error.base};
-    
+    background-color: ${({ theme }) => theme.colors.baseRed.base};
+    color: ${({ theme }) => theme.colors.textColor};
+    border: 2px solid ${({ theme }) => theme.colors.baseRed.base};
+
     &:hover:not(:disabled) {
-      background-color: \${({ theme }) => theme.colors.error.dark};
-      border-color: \${({ theme }) => theme.colors.error.dark};
+      background-color: ${({ theme }) => theme.colors.baseRed.dark};
+      border-color: ${({ theme }) => theme.colors.baseRed.dark};
       transform: translateY(-1px);
     }
-    
+
     &:active:not(:disabled) {
-      background-color: \${({ theme }) => theme.colors.error.dark20};
+      background-color: ${({ theme }) => theme.colors.baseRed.dark20};
       transform: translateY(0);
     }
   \`
-};
+}
 
 const buttonSizes = {
   sm: css\`
     padding: 8px 16px;
-    font-size: 14px;
-    min-height: 36px;
+    font-size: 12px;
+    min-height: 26px;
   \`,
-  
+
   md: css\`
-    padding: 12px 24px;
-    font-size: 16px;
-    min-height: 44px;
+    padding: 10px 20px;
+    font-size: 14px;
+    min-height: 34px;
   \`,
-  
+
   lg: css\`
-    padding: 16px 32px;
-    font-size: 18px;
-    min-height: 52px;
+    padding: 14px 28px;
+    font-size: 16px;
+    min-height: 42px;
   \`
-};
+}
 
 export const StyledButton = styled.button<StyledButtonProps>\`
   display: inline-flex;
@@ -718,26 +764,28 @@ export const StyledButton = styled.button<StyledButtonProps>\`
   justify-content: center;
   gap: 8px;
 
-  font-family: \${({ theme }) => theme.fonts.primary};
+  font-family: inherit;
   font-weight: 600;
   line-height: 1;
   text-decoration: none;
   text-align: center;
   white-space: nowrap;
 
-  border-radius: \${({ theme }) => theme.borderRadius.md};
+  border-radius: 4px;
   cursor: pointer;
   transition: all 0.2s ease-in-out;
 
   position: relative;
   overflow: hidden;
 
-  \${({ $size }) => buttonSizes[$size]}
-  \${({ $variant }) => buttonVariants[$variant]}
+  ${({ $size }) => buttonSizes[$size]}
+  ${({ $variant }) => buttonVariants[$variant]}
 
-  \${({ $fullWidth }) => $fullWidth && css\`
-    width: 100%;
-  \`}
+  ${({ $fullWidth }) =>
+    $fullWidth &&
+    css`
+      width: 100%;
+    `}
 
   &:disabled {
     opacity: 0.6;
@@ -745,28 +793,34 @@ export const StyledButton = styled.button<StyledButtonProps>\`
     transform: none !important;
   }
 
-  \${({ $loading }) => $loading && css\`
-    cursor: not-allowed;
+  ${({ $loading }) =>
+    $loading &&
+    css`
+      cursor: not-allowed;
 
-    &::before {
-      content: '';
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      width: 16px;
-      height: 16px;
-      margin: -8px 0 0 -8px;
-      border: 2px solid transparent;
-      border-top: 2px solid currentColor;
-      border-radius: 50%;
-      animation: spin 1s linear infinite;
-    }
+      &::before {
+        content: "";
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 16px;
+        height: 16px;
+        margin: -8px 0 0 -8px;
+        border: 2px solid transparent;
+        border-top: 2px solid currentColor;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+      }
 
-    @keyframes spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
-    }
-  \`}
+      @keyframes spin {
+        0% {
+          transform: rotate(0deg);
+        }
+        100% {
+          transform: rotate(360deg);
+        }
+      }
+    `}
 
   &::after {
     content: '';
@@ -778,7 +832,9 @@ export const StyledButton = styled.button<StyledButtonProps>\`
     border-radius: 50%;
     background: rgba(255, 255, 255, 0.3);
     transform: translate(-50%, -50%);
-    transition: width 0.3s, height 0.3s;
+    transition:
+      width 0.3s,
+      height 0.3s;
   }
 
   &:active:not(:disabled)::after {
@@ -787,23 +843,35 @@ export const StyledButton = styled.button<StyledButtonProps>\`
   }
 
   &:focus-visible {
-    outline: 2px solid \${({ theme }) => theme.colors.primary.base};
+    outline: 2px solid ${theme.colors.baseBlue.base};
     outline-offset: 2px;
   }
 
-  @media (max-width: \${({ theme }) => theme.breakpoints.sm}) {
-    \${({ $size }) => $size === 'lg' && buttonSizes.md}
-    \${({ $size }) => $size === 'md' && buttonSizes.sm}
-  }
-\`;
+  ${({ $size }) => css`
+    ${media.pc} {
+      ${$size === "lg" && buttonSizes.md}
+      ${$size === "md" && buttonSizes.sm}
+    }
+
+    ${media.tablet} {
+      ${$size === "lg" && buttonSizes.md}
+      ${$size === "md" && buttonSizes.sm}
+    }
+
+    ${media.mobile} {
+      ${$size === "lg" && buttonSizes.md}
+      ${$size === "md" && buttonSizes.sm}
+    }
+  `}
+\`
 
 export const ButtonContent = styled.span<{ $loading: boolean }>\`
   display: flex;
   align-items: center;
   gap: 8px;
-  opacity: \${({ $loading }) => $loading ? 0 : 1};
+  opacity: ${({ $loading }) => ($loading ? 0 : 1)};
   transition: opacity 0.2s ease-in-out;
-\`;
+\`
 
 export const IconWrapper = styled.span\`
   display: flex;
@@ -814,8 +882,8 @@ export const IconWrapper = styled.span\`
     width: 1em;
     height: 1em;
   }
-\`;
-`
+\`
+    `
   );
 
   // Cria componente de CartWrapper
@@ -1186,8 +1254,10 @@ import { AuthProvider } from './ui/AuthProvider/AuthProvider'
 export function Providers({ children }: { children: ReactNode }) {
   return (
     <Provider store={store}>
-      <AuthProvider />
-      {children}
+      <ThemeProvider theme={theme}>
+        <AuthProvider />
+        {children}
+      </ThemeProvider>
     </Provider>
   )
 }

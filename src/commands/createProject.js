@@ -571,66 +571,64 @@ export const themeConfig = {
   await writeFile(
     path.join(appPath, "src/components/ui/Button/Button.tsx"),
     `
-      "use client";
+'use client'
 
-import Link from "next/link";
-import React, { forwardRef } from "react";
-import { ButtonContent, IconWrapper, StyledButton } from "./ButtonStyles";
+import Link from 'next/link'
+import React, { forwardRef } from 'react'
+import { ButtonContent, IconWrapper, StyledButton } from './ButtonStyles'
 
-type ButtonVariants = "primary" | "secondary" | "outline" | "ghost" | "danger";
-type ButtonSizes = "sm" | "md" | "lg";
-
-type AnchorProps = React.AnchorHTMLAttributes<HTMLAnchorElement> & {
-  href: string;
-};
-
-type NativeButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
-  href?: undefined;
-};
+type ButtonVariants = 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger'
+type ButtonSizes = 'sm' | 'md' | 'lg'
 
 export interface CommonButtonProps {
-  variant?: ButtonVariants;
-  size?: ButtonSizes;
-  loading?: boolean;
-  fullWidth?: boolean;
-  leftIcon?: React.ReactNode;
-  rightIcon?: React.ReactNode;
-  children?: React.ReactNode;
-  disabled?: boolean;
+  variant?: ButtonVariants
+  size?: ButtonSizes
+  loading?: boolean
+  fullWidth?: boolean
+  leftIcon?: React.ReactNode
+  rightIcon?: React.ReactNode
+  children?: React.ReactNode
+  disabled?: boolean
+  type?: 'button' | 'submit' | 'reset'
+  href?: string
+  target?: React.HTMLAttributeAnchorTarget
+  rel?: string
 }
 
-export type ButtonProps = CommonButtonProps & (AnchorProps | NativeButtonProps);
+export type ButtonProps = CommonButtonProps & React.HTMLAttributes<HTMLButtonElement>
 
-export const Button = forwardRef<
-  HTMLButtonElement | HTMLAnchorElement,
-  ButtonProps
->(
+export const Button = forwardRef<HTMLButtonElement | HTMLAnchorElement, ButtonProps>(
   (
     {
-      variant = "primary",
-      size = "md",
+      variant = 'primary',
+      size = 'md',
       loading = false,
       fullWidth = false,
       leftIcon,
       rightIcon,
       disabled,
       children,
+      href,
+      target,
+      rel,
+      type = 'button',
       ...props
     },
     ref
   ) => {
-    const isDisabled = disabled || loading;
+    const isDisabled = disabled || loading
 
     const content = (
       <StyledButton
-        ref={ref as any}
+        ref={ref as React.Ref<HTMLButtonElement>}
         $variant={variant}
         $size={size}
         $loading={loading}
         $fullWidth={fullWidth}
         disabled={isDisabled}
         aria-disabled={isDisabled}
-        {...(props as any)}
+        type={!href ? type : undefined}
+        {...props}
       >
         <ButtonContent $loading={loading}>
           {leftIcon && <IconWrapper>{leftIcon}</IconWrapper>}
@@ -638,22 +636,22 @@ export const Button = forwardRef<
           {rightIcon && <IconWrapper>{rightIcon}</IconWrapper>}
         </ButtonContent>
       </StyledButton>
-    );
+    )
 
-    if ((props as AnchorProps).href) {
+    if (href) {
       return (
-        <Link href={(props as AnchorProps).href} passHref>
+        <Link href={href} target={target} rel={rel} legacyBehavior={false}>
           {content}
         </Link>
-      );
+      )
     }
 
-    return content;
+    return content
   }
-);
+)
 
-Button.displayName = "Button";
-export default Button;
+Button.displayName = 'Button'
+export default Button
 
     `
   );
@@ -662,7 +660,7 @@ export default Button;
   await writeFile(
     path.join(appPath, "src/components/ui/Button/ButtonStyles.tsx"),
     `
-import { media, theme } from '@/styles/theme'
+import { media } from '@/styles/theme'
 import styled, { css } from 'styled-components'
 
 interface StyledButtonProps {
@@ -676,7 +674,7 @@ const buttonVariants = {
   primary: css\`
     background-color: ${({ theme }) => theme.colors.baseBlue.base};
     color: ${({ theme }) => theme.colors.textColor};
-    border: 2px solid ${theme.colors.baseBlue.base};
+    border: 2px solid ${({ theme }) => theme.colors.baseBlue.base};
 
     &:hover:not(:disabled) {
       background-color: ${({ theme }) => theme.colors.baseBlue.dark};
@@ -730,12 +728,10 @@ const buttonVariants = {
     border: 2px solid transparent;
 
     &:hover:not(:disabled) {
-      background-color: transparent;
       transform: translateY(-2px);
     }
 
     &:active:not(:disabled) {
-      background-color: transparent;
       transform: translateY(0);
     }
   \`,
@@ -783,18 +779,15 @@ export const StyledButton = styled.button<StyledButtonProps>\`
   align-items: center;
   justify-content: center;
   gap: 8px;
-
   font-family: inherit;
   font-weight: 600;
   line-height: 1;
   text-decoration: none;
   text-align: center;
   white-space: nowrap;
-
   border-radius: 4px;
   cursor: pointer;
   transition: all 0.2s ease-in-out;
-
   position: relative;
   overflow: hidden;
 
@@ -810,7 +803,6 @@ export const StyledButton = styled.button<StyledButtonProps>\`
   &:disabled {
     opacity: 0.6;
     cursor: not-allowed;
-    transform: none !important;
   }
 
   ${({ $loading }) =>
@@ -842,49 +834,15 @@ export const StyledButton = styled.button<StyledButtonProps>\`
       }
     `}
 
-  ${({ $variant }) =>
-    $variant !== "ghost" &&
-    css`
-      &::after {
-        content: "";
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        width: 0;
-        height: 0;
-        border-radius: 50%;
-        background: rgba(255, 255, 255, 0.3);
-        transform: translate(-50%, -50%);
-        transition: width 0.3s, height 0.3s;
-      }
-
-      &:active:not(:disabled)::after {
-        width: 300px;
-        height: 300px;
-      }
-    `}
-
   &:focus-visible {
-    outline: 2px solid ${theme.colors.baseBlue.base};
+    outline: 2px solid ${({ theme }) => theme.colors.baseBlue.base};
     outline-offset: 2px;
   }
 
-  ${({ $size }) => css`
-    ${media.pc} {
-      ${$size === "lg" && buttonSizes.md}
-      ${$size === "md" && buttonSizes.sm}
-    }
-
-    ${media.tablet} {
-      ${$size === "lg" && buttonSizes.md}
-      ${$size === "md" && buttonSizes.sm}
-    }
-
-    ${media.mobile} {
-      ${$size === "lg" && buttonSizes.md}
-      ${$size === "md" && buttonSizes.sm}
-    }
-  `}
+  ${media.mobile} {
+    ${({ $size }) => $size === "lg" && buttonSizes.md}
+    ${({ $size }) => $size === "md" && buttonSizes.sm}
+  }
 \`
 
 export const ButtonContent = styled.span<{ $loading: boolean }>\`
@@ -905,6 +863,7 @@ export const IconWrapper = styled.span\`
     height: 1em;
   }
 \`
+
     `
   );
 

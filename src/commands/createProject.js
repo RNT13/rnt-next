@@ -672,59 +672,59 @@ interface StyledButtonProps {
 
 const buttonVariants = {
   primary: css\`
-    background-color: ${({ theme }) => theme.colors.baseBlue.base};
-    color: ${({ theme }) => theme.colors.textColor};
-    border: 2px solid ${({ theme }) => theme.colors.baseBlue.base};
+    background-color: \${({ theme }) => theme.colors.baseBlue.base};
+    color: \${({ theme }) => theme.colors.textColor};
+    border: 2px solid \${({ theme }) => theme.colors.baseBlue.base};
 
     &:hover:not(:disabled) {
-      background-color: ${({ theme }) => theme.colors.baseBlue.dark};
-      border-color: ${({ theme }) => theme.colors.baseBlue.dark};
+      background-color: \${({ theme }) => theme.colors.baseBlue.dark};
+      border-color: \${({ theme }) => theme.colors.baseBlue.dark};
       transform: translateY(-1px);
     }
 
     &:active:not(:disabled) {
-      background-color: ${({ theme }) => theme.colors.baseBlue.dark20};
+      background-color: \${({ theme }) => theme.colors.baseBlue.dark20};
       transform: translateY(0);
     }
   \`,
 
   secondary: css\`
-    background-color: ${({ theme }) => theme.colors.baseGreen.base};
-    color: ${({ theme }) => theme.colors.textColor};
-    border: 2px solid ${({ theme }) => theme.colors.baseGreen.base};
+    background-color: \${({ theme }) => theme.colors.baseGreen.base};
+    color: \${({ theme }) => theme.colors.textColor};
+    border: 2px solid \${({ theme }) => theme.colors.baseGreen.base};
 
     &:hover:not(:disabled) {
-      background-color: ${({ theme }) => theme.colors.baseGreen.dark};
-      border-color: ${({ theme }) => theme.colors.baseGreen.dark};
+      background-color: \${({ theme }) => theme.colors.baseGreen.dark};
+      border-color: \${({ theme }) => theme.colors.baseGreen.dark};
       transform: translateY(-1px);
     }
 
     &:active:not(:disabled) {
-      background-color: ${({ theme }) => theme.colors.baseGreen.dark20};
+      background-color: \${({ theme }) => theme.colors.baseGreen.dark20};
       transform: translateY(0);
     }
   \`,
 
   outline: css\`
     background-color: transparent;
-    color: ${({ theme }) => theme.colors.baseBlue.base};
-    border: 2px solid ${({ theme }) => theme.colors.baseBlue.base};
+    color: \${({ theme }) => theme.colors.baseBlue.base};
+    border: 2px solid \${({ theme }) => theme.colors.baseBlue.base};
 
     &:hover:not(:disabled) {
-      background-color: ${({ theme }) => theme.colors.baseBlue.base};
-      color: ${({ theme }) => theme.colors.textColor};
+      background-color: \${({ theme }) => theme.colors.baseBlue.base};
+      color: \${({ theme }) => theme.colors.textColor};
       transform: translateY(-1px);
     }
 
     &:active:not(:disabled) {
-      background-color: ${({ theme }) => theme.colors.baseBlue.dark};
+      background-color: \${({ theme }) => theme.colors.baseBlue.dark};
       transform: translateY(0);
     }
   \`,
 
   ghost: css\`
     background-color: transparent;
-    color: ${({ theme }) => theme.colors.textColor};
+    color: \${({ theme }) => theme.colors.textColor};
     border: 2px solid transparent;
 
     &:hover:not(:disabled) {
@@ -737,18 +737,18 @@ const buttonVariants = {
   \`,
 
   danger: css\`
-    background-color: ${({ theme }) => theme.colors.baseRed.base};
-    color: ${({ theme }) => theme.colors.textColor};
-    border: 2px solid ${({ theme }) => theme.colors.baseRed.base};
+    background-color: \${({ theme }) => theme.colors.baseRed.base};
+    color: \${({ theme }) => theme.colors.textColor};
+    border: 2px solid \${({ theme }) => theme.colors.baseRed.base};
 
     &:hover:not(:disabled) {
-      background-color: ${({ theme }) => theme.colors.baseRed.dark};
-      border-color: ${({ theme }) => theme.colors.baseRed.dark};
+      background-color: \${({ theme }) => theme.colors.baseRed.dark};
+      border-color: \${({ theme }) => theme.colors.baseRed.dark};
       transform: translateY(-1px);
     }
 
     &:active:not(:disabled) {
-      background-color: ${({ theme }) => theme.colors.baseRed.dark20};
+      background-color: \${({ theme }) => theme.colors.baseRed.dark20};
       transform: translateY(0);
     }
   \`
@@ -791,23 +791,23 @@ export const StyledButton = styled.button<StyledButtonProps>\`
   position: relative;
   overflow: hidden;
 
-  ${({ $size }) => buttonSizes[$size]}
-  ${({ $variant }) => buttonVariants[$variant]}
+  \${({ $size }) => buttonSizes[$size]}
+  \${({ $variant }) => buttonVariants[$variant]}
 
-  ${({ $fullWidth }) =>
+  \${({ $fullWidth }) =>
     $fullWidth &&
-    css`
+    css\`
       width: 100%;
-    `}
+    \`}
 
   &:disabled {
     opacity: 0.6;
     cursor: not-allowed;
   }
 
-  ${({ $loading }) =>
+  \${({ $loading }) =>
     $loading &&
-    css`
+    css\`
       cursor: not-allowed;
 
       &::before {
@@ -832,16 +832,16 @@ export const StyledButton = styled.button<StyledButtonProps>\`
           transform: rotate(360deg);
         }
       }
-    `}
+    \`}
 
-  &:focus-visible {
-    outline: 2px solid ${({ theme }) => theme.colors.baseBlue.base};
+  \&:focus-visible {
+    outline: 2px solid \${({ theme }) => theme.colors.baseBlue.base};
     outline-offset: 2px;
   }
 
-  ${media.mobile} {
-    ${({ $size }) => $size === "lg" && buttonSizes.md}
-    ${({ $size }) => $size === "md" && buttonSizes.sm}
+  \${media.mobile} {
+    \${({ $size }) => $size === "lg" && buttonSizes.md}
+    \${({ $size }) => $size === "md" && buttonSizes.sm}
   }
 \`
 
@@ -849,7 +849,7 @@ export const ButtonContent = styled.span<{ $loading: boolean }>\`
   display: flex;
   align-items: center;
   gap: 8px;
-  opacity: ${({ $loading }) => ($loading ? 0 : 1)};
+  opacity: \${({ $loading }) => ($loading ? 0 : 1)};
   transition: opacity 0.2s ease-in-out;
 \`
 

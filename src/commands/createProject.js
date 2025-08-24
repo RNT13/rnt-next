@@ -123,9 +123,9 @@ export async function createProject(config) {
     folders.push(
       "src/app/api",
       "src/app/api/auth/login",
-      "src/app/api/auth/signup",
       "src/app/api/auth/logout",
       "src/app/api/auth/verify",
+      "src/app/api/auth/register",
       "src/app/api/users"
     );
 
@@ -426,7 +426,7 @@ export type ColorVariants = {
   dark30: string
   dark40: string
   dark50: string
-
+  }
 
 export function colorHSLVariants(h: number, s: number, l: number): ColorVariants {
   const clamp = (val: number) => Math.min(100, Math.max(0, val))
@@ -1231,6 +1231,8 @@ import { store } from '@/redux/store'
 import { ReactNode } from 'react'
 import { Provider } from 'react-redux'
 import { AuthProvider } from './ui/AuthProvider/AuthProvider'
+import { ThemeProvider } from 'styled-components'
+import { theme } from '@/styles/theme'
 
 export function Providers({ children }: { children: ReactNode }) {
   return (
@@ -1624,7 +1626,7 @@ export async function GET(req: NextRequest) {
     const decoded = jwt.verify(token, secret) as { id: number }
 
     const user = await prisma.user.findUnique({
-      where: { id: decoded.id },
+      where: { id: decoded.id.toString() },
       select: { id: true, name: true, email: true }
     })
 
@@ -1993,14 +1995,6 @@ export default function RootLayout({
 }
 
 async function createExampleFiles(appPath, cssChoice, installTests, appName) {
-  // Criar estrutura de rotas com exemplos
-  if (!fs.existsSync("src/app/(public)")) {
-    fs.mkdirSync("src/app/(public)", { recursive: true });
-  }
-  if (!fs.existsSync("src/app/(private)")) {
-    fs.mkdirSync("src/app/(private)", { recursive: true });
-  }
-
   // Página inicial de exemplo
   if (cssChoice === "styled-components") {
     await writeFile(

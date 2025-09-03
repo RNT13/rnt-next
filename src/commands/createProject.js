@@ -359,13 +359,20 @@ declare global {
   }
 
   declare enum UserRole {
-    ADMIN = 'admin',
-    USER = 'user'
+    ADMIN = 'ADMIN',
+    USER = 'USER'
   }
 
   declare type RegisterResponse = {
     user: User
     token: string
+  }
+
+  declare type RegisterResponse = {
+    user: User
+    token: string
+    message: string
+    success: boolean
   }
 
   declare interface RegisterPayLoad {
@@ -377,6 +384,8 @@ declare global {
   declare interface LoginResponse {
     user: User
     token: string
+    message: string
+    success: boolean
   }
 
   declare interface LoginPayLoad {
@@ -407,7 +416,19 @@ declare global {
     id: string
     name: string
     email: string
+    role: UserRole
+    avatar: string
+    createdAt: Date
+    updatedAt: Date
   }
+
+  declare interface ApiErrorResponse {
+  data?: {
+    message?: string
+  }
+  status?: number
+}
+
 }
     `
   );
@@ -1596,7 +1617,8 @@ export type AppDispatch = typeof store.dispatch
     // Schema do Prisma com comentários
     await writeFile(
       path.join(appPath, "prisma/schema.prisma"),
-      `// 🗄️ PRISMA SCHEMA - Configuração do banco de dados
+      `
+// 🗄️ PRISMA SCHEMA - Configuração do banco de dados
 // Este arquivo define a estrutura do seu banco de dados
 
 // Configuração do gerador do Prisma Client
@@ -1651,7 +1673,7 @@ model User {
 //    npx prisma migrate dev --name init
 //
 // 📚 DOCUMENTAÇÃO: https://www.prisma.io/docs
-`
+      `
     );
 
     // Arquivo de configuração do Prisma Client
@@ -1679,55 +1701,107 @@ if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma
       `
     );
 
-    //Cria arquivo middleware.ts na raiz do projeto
+    //cria arquivo middleware na pasta src
     await writeFile(
-      path.join(appPath, "middleware.ts"),
+      path.join(appPath, "src/middleware.ts"),
       `
 import jwt from 'jsonwebtoken'
-import { NextRequest, NextResponse } from 'next/server'
+import { NextResponse, type NextRequest } from 'next/server'
 
-const publicRoutes = ['/', '/sign-in', '/register', '/pricing', '/allGames', '/gameDetails', '/checkout']
+// --- CONFIGURAÇÕES ---
 
-const JWT_SECRET = process.env.JWT_SECRET!
-const REDIRECT_WHEN_NOT_AUTHENTICATED = '/sign-in'
+// Rotas públicas que qualquer um pode acessar
+const PUBLIC_ROUTES = ['/', '/products', '/checkout', '/login', '/register', '/products/[id]']
 
-function redirectTo(path: string, request: NextRequest) {
-  const url = request.nextUrl.clone()
-  url.pathname = path
-  return NextResponse.redirect(url)
+// Rotas de autenticação
+const AUTH_ROUTES = ['/login', '/register']
+
+// Rotas que exigem autenticação de ADMIN
+const ADMIN_ROUTES = ['/admin']
+
+// URLs de redirecionamento
+const LOGIN_URL = '/login'
+const HOME_URL = '/'
+
+// --- TIPOS ---
+interface DecodedToken {
+  id: string
+  role: 'ADMIN' | 'USER'
 }
+
+// --- O MIDDLEWARE ---
 
 export function middleware(request: NextRequest) {
-  const path = request.nextUrl.pathname
-  const isPublic = publicRoutes.includes(path)
-  const token = request.cookies.get('token')?.value
+  const { pathname } = request.nextUrl
+  const authToken = request.cookies.get('token')?.value
 
-  let isAuthenticated = false
+  console.log('🛡️ Middleware executando para ->', pathname)
 
-  if (token) {
-    try {
-      jwt.verify(token, JWT_SECRET)
-      isAuthenticated = true
-    } catch (err) {
-      console.error('Token inválido:', err)
+  // 1. Lógica para rotas de autenticação (/login, /register)
+  if (AUTH_ROUTES.includes(pathname)) {
+    // Se o usuário JÁ está logado, redireciona para a home
+    if (authToken) {
+      return NextResponse.redirect(new URL(HOME_URL, request.url))
     }
+    // Se não está logado, permite o acesso à página de login/registro
+    return NextResponse.next()
   }
 
-  if (!isAuthenticated && !isPublic) {
-    return redirectTo(REDIRECT_WHEN_NOT_AUTHENTICATED, request)
+  // 2. Lógica para rotas públicas
+  if (
+    PUBLIC_ROUTES.includes(pathname) || // rotas públicas fixas
+    pathname.startsWith('/products/') // rotas de produto individuais
+  ) {
+    // Permite o acesso para todos, logados ou não.
+    return NextResponse.next()
   }
 
-  if (isAuthenticated && (path === '/sign-in' || path === '/register')) {
-    return redirectTo('/', request)
+  // A partir daqui, todas as rotas são consideradas PRIVADAS
+
+  // 3. Se não há token em uma rota privada, redireciona para o login
+  if (!authToken) {
+    const redirectUrl = new URL(LOGIN_URL, request.url)
+    redirectUrl.searchParams.set('redirectedFrom', pathname)
+    return NextResponse.redirect(redirectUrl)
   }
 
-  return NextResponse.next()
+  // 4. Se há token, verifica sua validade e autorização
+  try {
+    const decodedPayload = jwt.verify(authToken, process.env.JWT_SECRET!) as DecodedToken
+
+    // Lógica para rotas de Admin
+    if (ADMIN_ROUTES.some(route => pathname.startsWith(route))) {
+      if (decodedPayload.role !== 'ADMIN') {
+        return NextResponse.redirect(new URL(HOME_URL, request.url))
+      }
+    }
+
+    // Usuário autenticado e autorizado, passa os dados via headers
+    const requestHeaders = new Headers(request.headers)
+    requestHeaders.set('x-user-id', decodedPayload.id)
+    requestHeaders.set('x-user-role', decodedPayload.role)
+
+    return NextResponse.next({
+      request: {
+        headers: requestHeaders
+      }
+    })
+  } catch (error) {
+    // Token inválido ou expirado
+    console.error('❌ Erro na verificação do token:', error)
+    const redirectUrl = new URL(LOGIN_URL, request.url)
+    const response = NextResponse.redirect(redirectUrl)
+    response.cookies.delete('token')
+    return response
+  }
 }
 
+// --- MATCHER ---
 export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt|api/).*)']
+  matcher: ['/((?!api|_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml|images).*)']
 }
-    `
+
+      `
     );
 
     // .env file
@@ -1754,41 +1828,58 @@ import { NextResponse } from 'next/server'
 
 export async function POST(req: Request) {
   try {
+    // Recebe email e senha do body da requisição
     const { email, password } = await req.json()
     const normalizedEmail = email.toLowerCase().trim()
 
-    const user = await prisma.user.findUnique({ where: { email: normalizedEmail } })
+    // Busca usuário no banco
+    const user = await prisma.user.findUnique({
+      where: { email: normalizedEmail }
+    })
 
+    // Caso usuário não exista
     if (!user) {
-      return NextResponse.json({ message: 'Credenciais inválidas' }, { status: 401 })
+      return NextResponse.json({ success: false, message: 'Usuário não encontrado' }, { status: 401 })
     }
 
+    // Compara senha com hash
     const passwordMatch = await bcrypt.compare(password, user.password)
-
     if (!passwordMatch) {
-      return NextResponse.json({ message: 'Credenciais inválidas' }, { status: 401 })
+      return NextResponse.json({ success: false, message: 'Senha incorreta' }, { status: 401 })
     }
 
-    const token = jwt.sign({ id: user.id, name: user.name, email: user.email }, process.env.JWT_SECRET!, { expiresIn: '7d' })
+    // Cria token JWT
+    const token = jwt.sign(
+      {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role
+      },
+      process.env.JWT_SECRET!,
+      { expiresIn: '7d' }
+    )
 
+    // Serializa cookie
+    const isProd = process.env.NODE_ENV === 'production'
     const serialized = serialize('token', token, {
-      secure: process.env.NODE_ENV === 'production',
+      secure: isProd,
       httpOnly: true,
       sameSite: 'lax',
       path: '/',
       maxAge: 60 * 60 * 24 * 7 // 7 dias
     })
 
-    const response = new NextResponse(JSON.stringify({ message: 'Login bem-sucedido', user }), {
-      status: 200
-    })
+    // Retorna resposta padronizada
+    const response = NextResponse.json({ success: true, message: 'Login realizado com sucesso', data: { user } }, { status: 200 })
 
+    // Adiciona cookie no header
     response.headers.set('Set-Cookie', serialized)
 
     return response
   } catch (error) {
     console.error('Erro no login:', error)
-    return NextResponse.json({ message: 'Erro interno no servidor' }, { status: 500 })
+    return NextResponse.json({ success: false, message: 'Erro interno no servidor' }, { status: 500 })
   }
 }
 
@@ -1828,33 +1919,55 @@ import { prisma } from '@/utils/prisma'
 import bcrypt from 'bcryptjs'
 import { NextResponse } from 'next/server'
 
-export async function POST(request: Request) {
-  const { name, email, password } = await request.json()
-  const adminEmail = ['renatornt13@gmail.com', 'email da laura aqui ']
-  const role = adminEmail.includes(email) ? 'ADMIN' : 'USER'
-  const normalizedEmail = email.toLowerCase().trim()
+export async function POST(req: Request) {
+  try {
+    // Recebe dados do body
+    const { name, email, password } = await req.json()
+    const normalizedEmail = email.toLowerCase().trim()
 
-  if (!name || !email || !password) {
-    return NextResponse.json({ error: 'Dados incompletos' }, { status: 400 })
-  }
-
-  const existingUser = await prisma.user.findUnique({ where: { email: normalizedEmail } })
-  if (existingUser) {
-    return NextResponse.json({ error: 'Usuário já existe' }, { status: 400 })
-  }
-
-  const hashedPassword = await bcrypt.hash(password, 10)
-
-  const newUser = await prisma.user.create({
-    data: {
-      name,
-      email: normalizedEmail,
-      password: hashedPassword,
-      role
+    // Valida campos obrigatórios
+    if (!name || !email || !password) {
+      return NextResponse.json({ success: false, message: 'Preencha todos os campos' }, { status: 400 })
     }
-  })
 
-  return NextResponse.json({ user: { id: newUser.id, name: newUser.name, email: newUser.email } })
+    // Verifica se usuário já existe
+    const existingUser = await prisma.user.findUnique({
+      where: { email: normalizedEmail }
+    })
+    if (existingUser) {
+      return NextResponse.json({ success: false, message: 'Usuário já existe' }, { status: 400 })
+    }
+
+    // Define role (ADMIN ou USER)
+    const adminEmails = ['email@admin.com']
+    const role = adminEmails.includes(normalizedEmail) ? 'ADMIN' : 'USER'
+
+    // Criptografa senha
+    const hashedPassword = await bcrypt.hash(password, 10)
+
+    // Cria novo usuário
+    const newUser = await prisma.user.create({
+      data: {
+        name,
+        email: normalizedEmail,
+        password: hashedPassword,
+        role
+      }
+    })
+
+    // Retorna resposta padronizada
+    return NextResponse.json(
+      {
+        success: true,
+        message: 'Usuário criado com sucesso',
+        data: { id: newUser.id, name: newUser.name, email: newUser.email }
+      },
+      { status: 201 }
+    )
+  } catch (error) {
+    console.error('Erro no registro:', error)
+    return NextResponse.json({ success: false, message: 'Erro interno no servidor' }, { status: 500 })
+  }
 }
 
       `
@@ -1868,30 +1981,47 @@ import { prisma } from '@/utils/prisma'
 import jwt from 'jsonwebtoken'
 import { NextRequest, NextResponse } from 'next/server'
 
+// GET /api/verify
 export async function GET(req: NextRequest) {
   try {
+    // Pega o token salvo nos cookies
     const token = req.cookies.get('token')?.value
 
+    // Caso não tenha token, retorna não autorizado
     if (!token) {
-      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 })
+      return NextResponse.json({ success: false, message: 'Usuário não autenticado' }, { status: 401 })
     }
 
+    // Valida o token com a secret do .env
     const secret = process.env.JWT_SECRET!
     const decoded = jwt.verify(token, secret) as { id: string }
 
+    // Busca o usuário no banco pelo ID do token
     const user = await prisma.user.findUnique({
       where: { id: decoded.id },
-      select: { id: true, name: true, email: true, role: true, avatar: true, createdAt: true, updatedAt: true }
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        avatar: true,
+        createdAt: true,
+        updatedAt: true
+      }
     })
 
+    // Se não encontrar o usuário
     if (!user) {
-      return NextResponse.json({ message: 'User not found' }, { status: 404 })
+      return NextResponse.json({ success: false, message: 'Usuário não encontrado' }, { status: 404 })
     }
 
+    // Caso tudo dê certo, retorna os dados do usuário
     return NextResponse.json(user, { status: 200 })
   } catch (error) {
     console.error('Erro na verificação do token:', error)
-    return NextResponse.json({ message: 'Invalid token' }, { status: 401 })
+
+    // Se o token for inválido ou expirado
+    return NextResponse.json({ success: false, message: 'Token inválido ou expirado' }, { status: 401 })
   }
 }
 

@@ -70,7 +70,7 @@ export async function createProject(config) {
     prodDependencies.push(
       "prisma",
       "@prisma/client",
-      "jsonwebtoken",
+      "jose",
       "bcryptjs",
       "cookie"
     );
@@ -1705,21 +1705,15 @@ if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma
     await writeFile(
       path.join(appPath, "src/middleware.ts"),
       `
-import jwt from 'jsonwebtoken'
+// Importe jwtVerify da 'jose' em vez de 'jsonwebtoken'
+import { jwtVerify } from 'jose'
 import { NextResponse, type NextRequest } from 'next/server'
 
 // --- CONFIGURAÇÕES ---
-
-// Rotas públicas que qualquer um pode acessar
-const PUBLIC_ROUTES = ['/', '/products', '/checkout', '/login', '/register', '/products/[id]']
-
-// Rotas de autenticação
+// (Nenhuma mudança aqui, as configurações de rota continuam as mesmas)
+const PUBLIC_ROUTES = ['/', '/checkout']
 const AUTH_ROUTES = ['/login', '/register']
-
-// Rotas que exigem autenticação de ADMIN
 const ADMIN_ROUTES = ['/admin']
-
-// URLs de redirecionamento
 const LOGIN_URL = '/login'
 const HOME_URL = '/'
 
@@ -1729,30 +1723,25 @@ interface DecodedToken {
   role: 'ADMIN' | 'USER'
 }
 
-// --- O MIDDLEWARE ---
+// --- O MIDDLEWARE (AGORA ASSÍNCRONO) ---
 
-export function middleware(request: NextRequest) {
+// A função middleware agora precisa ser 'async'
+export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
   const authToken = request.cookies.get('token')?.value
 
-  console.log('🛡️ Middleware executando para ->', pathname)
+  console.log('🛡️ Middleware (Edge Runtime) executando para ->', pathname)
 
   // 1. Lógica para rotas de autenticação (/login, /register)
   if (AUTH_ROUTES.includes(pathname)) {
-    // Se o usuário JÁ está logado, redireciona para a home
     if (authToken) {
       return NextResponse.redirect(new URL(HOME_URL, request.url))
     }
-    // Se não está logado, permite o acesso à página de login/registro
     return NextResponse.next()
   }
 
   // 2. Lógica para rotas públicas
-  if (
-    PUBLIC_ROUTES.includes(pathname) || // rotas públicas fixas
-    pathname.startsWith('/products/') // rotas de produto individuais
-  ) {
-    // Permite o acesso para todos, logados ou não.
+  if (PUBLIC_ROUTES.includes(pathname) || pathname.startsWith('/products')) {
     return NextResponse.next()
   }
 
@@ -1765,21 +1754,25 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(redirectUrl)
   }
 
-  // 4. Se há token, verifica sua validade e autorização
+  // 4. Se há token, verifica sua validade e autorização com 'jose'
   try {
-    const decodedPayload = jwt.verify(authToken, process.env.JWT_SECRET!) as DecodedToken
+    // Codifica o segredo para o formato que 'jose' espera
+    const secret = new TextEncoder().encode(process.env.JWT_SECRET!)
+
+    // Verifica o token usando jwtVerify (assíncrono)
+    const { payload } = await jwtVerify<DecodedToken>(authToken, secret)
 
     // Lógica para rotas de Admin
     if (ADMIN_ROUTES.some(route => pathname.startsWith(route))) {
-      if (decodedPayload.role !== 'ADMIN') {
+      if (payload.role !== 'ADMIN') {
         return NextResponse.redirect(new URL(HOME_URL, request.url))
       }
     }
 
     // Usuário autenticado e autorizado, passa os dados via headers
     const requestHeaders = new Headers(request.headers)
-    requestHeaders.set('x-user-id', decodedPayload.id)
-    requestHeaders.set('x-user-role', decodedPayload.role)
+    requestHeaders.set('x-user-id', payload.id)
+    requestHeaders.set('x-user-role', payload.role)
 
     return NextResponse.next({
       request: {
@@ -1787,8 +1780,8 @@ export function middleware(request: NextRequest) {
       }
     })
   } catch (error) {
-    // Token inválido ou expirado
-    console.error('❌ Erro na verificação do token:', error)
+    // O erro pode ser por token expirado, assinatura inválida, etc.
+    console.error("❌ Erro na verificação do token com 'jose':", error)
     const redirectUrl = new URL(LOGIN_URL, request.url)
     const response = NextResponse.redirect(redirectUrl)
     response.cookies.delete('token')
@@ -1797,6 +1790,7 @@ export function middleware(request: NextRequest) {
 }
 
 // --- MATCHER ---
+// (Nenhuma mudança aqui)
 export const config = {
   matcher: ['/((?!api|_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml|images).*)']
 }
@@ -1820,10 +1814,11 @@ JWT_SECRET=alguma-coisa-bem-secreta
     await writeFile(
       path.join(appPath, "src/app/api/auth/login/route.ts"),
       `
+// Importe o necessário de 'jose' e remova a importação de 'jsonwebtoken'
 import { prisma } from '@/utils/prisma'
 import bcrypt from 'bcryptjs'
 import { serialize } from 'cookie'
-import jwt from 'jsonwebtoken'
+import { SignJWT } from 'jose'
 import { NextResponse } from 'next/server'
 
 export async function POST(req: Request) {
@@ -1848,17 +1843,25 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, message: 'Senha incorreta' }, { status: 401 })
     }
 
-    // Cria token JWT
-    const token = jwt.sign(
-      {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        role: user.role
-      },
-      process.env.JWT_SECRET!,
-      { expiresIn: '7d' }
-    )
+    // --- CRIAÇÃO DO TOKEN COM 'jose' ---
+
+    // 1. Codifica a chave secreta (mesmo processo do middleware)
+    const secret = new TextEncoder().encode(process.env.JWT_SECRET!)
+
+    // 2. Cria o token usando a classe SignJWT
+    const token = await new SignJWT({
+      // Adicione aqui os dados (payload) que você quer no token
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      role: user.role
+    })
+      .setProtectedHeader({ alg: 'HS256' }) // Define o algoritmo de assinatura
+      .setIssuedAt() // Define o timestamp de quando o token foi criado (iat)
+      .setExpirationTime('7d') // Define o tempo de expiração (exp)
+      .sign(secret) // Assina o token com a chave secreta
+
+    // --- FIM DA CRIAÇÃO DO TOKEN ---
 
     // Serializa cookie
     const isProd = process.env.NODE_ENV === 'production'
@@ -1871,7 +1874,8 @@ export async function POST(req: Request) {
     })
 
     // Retorna resposta padronizada
-    const response = NextResponse.json({ success: true, message: 'Login realizado com sucesso', data: { user } }, { status: 200 })
+    // Removi o 'user' do retorno para não expor dados desnecessários como o hash da senha
+    const response = NextResponse.json({ success: true, message: 'Login realizado com sucesso' }, { status: 200 })
 
     // Adiciona cookie no header
     response.headers.set('Set-Cookie', serialized)
@@ -1977,14 +1981,15 @@ export async function POST(req: Request) {
     await writeFile(
       path.join(appPath, "src/app/api/auth/verify/route.ts"),
       `
+// 1. Importe 'jwtVerify' de 'jose' e remova a importação de 'jsonwebtoken'
 import { prisma } from '@/utils/prisma'
-import jwt from 'jsonwebtoken'
+import { jwtVerify } from 'jose'
 import { NextRequest, NextResponse } from 'next/server'
 
 // GET /api/verify
 export async function GET(req: NextRequest) {
   try {
-    // Pega o token salvo nos cookies
+    // Pega o token salvo nos cookies (nenhuma mudança aqui)
     const token = req.cookies.get('token')?.value
 
     // Caso não tenha token, retorna não autorizado
@@ -1992,13 +1997,19 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ success: false, message: 'Usuário não autenticado' }, { status: 401 })
     }
 
-    // Valida o token com a secret do .env
-    const secret = process.env.JWT_SECRET!
-    const decoded = jwt.verify(token, secret) as { id: string }
+    // --- VALIDAÇÃO DO TOKEN COM 'jose' ---
 
-    // Busca o usuário no banco pelo ID do token
+    // 2. Codifica a chave secreta
+    const secret = new TextEncoder().encode(process.env.JWT_SECRET!)
+
+    // 3. Valida o token com jwtVerify (de forma assíncrona)
+    const { payload } = (await jwtVerify(token, secret)) as { payload: { id: string } }
+
+    // --- FIM DA VALIDAÇÃO DO TOKEN ---
+
+    // Busca o usuário no banco pelo ID do token (agora usando 'payload.id')
     const user = await prisma.user.findUnique({
-      where: { id: decoded.id },
+      where: { id: payload.id },
       select: {
         id: true,
         name: true,
@@ -2018,9 +2029,9 @@ export async function GET(req: NextRequest) {
     // Caso tudo dê certo, retorna os dados do usuário
     return NextResponse.json(user, { status: 200 })
   } catch (error) {
-    console.error('Erro na verificação do token:', error)
+    console.error('Erro na verificação do token (API):', error)
 
-    // Se o token for inválido ou expirado
+    // Se o token for inválido ou expirado, o 'catch' será acionado
     return NextResponse.json({ success: false, message: 'Token inválido ou expirado' }, { status: 401 })
   }
 }

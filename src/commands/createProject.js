@@ -71,7 +71,8 @@ export async function createProject(config) {
       "prisma",
       "@prisma/client",
       "jsonwebtoken",
-      "bcryptjs"
+      "bcryptjs",
+      "cookie"
     );
     devDependencies.push(
       "@types/jsonwebtoken",
@@ -112,7 +113,6 @@ export async function createProject(config) {
       "src/components/ui/ModalWrapper",
       "src/components/ui/ErrorMessage",
       "src/components/ui/MaskedInput",
-      "src/components/ui/AuthProvider",
       "src/components/layout",
       "src/components/layout/header",
       "src/components/layout/footer"
@@ -257,135 +257,157 @@ module.exports = createJestConfig(customJestConfig)
  * - Enums e constantes tipadas
  */
 
-import { ColorVariants } from '@/utils/colorUtils'
 import 'styled-components'
+import { store } from "./src/redux/store";
 
-declare module 'styled-components' {
-  export interface DefaultTheme {
-    colors: {
-      baseBlue: ColorVariants
-      baseGreen: ColorVariants
-      baseRed: ColorVariants
-      baseCyan: ColorVariants
+// Tipagem do Redux
+export type RootState = ReturnType<typeof store.getState>;
+export type AppDispatch = typeof store.dispatch;
 
-      // cores estáticas
-      primaryColor: string
-      secondaryColor: string
-      thirdColor: string
-      forthColor: string
-      textColor: string
+// Tipagem global pro React-Redux + RTK
+declare module 'react-redux' {
+  type DefaultRootState = RootState
+}
 
-      yellow: string
-      yellow2: string
-      blue: string
-      blue2: string
-      gray: string
-      gray2: string
-      orange: string
-      orange2: string
-      black: string
-      red: string
-      redHover: string
-      error: string
-      green: string
-      green2: string
-      neonBlue: string
-      neonGree: string
+declare interface DefaultTheme {
+  colors: {
+    baseBlue: ColorVariants
+    baseGreen: ColorVariants
+    baseRed: ColorVariants
+    baseCyan: ColorVariants
 
-      // suporte a nested objects (como neon no darkTheme)
-      neon?: {
-        [key: string]: string
-      }
+    // cores estáticas
+    primaryColor: string
+    secondaryColor: string
+    thirdColor: string
+    forthColor: string
+    textColor: string
+
+    yellow: string
+    yellow2: string
+    blue: string
+    blue2: string
+    gray: string
+    gray2: string
+    orange: string
+    orange2: string
+    black: string
+    red: string
+    redHover: string
+    error: string
+    green: string
+    green2: string
+    neonBlue: string
+    neonGree: string
+
+    // suporte a nested objects (como neon no darkTheme)
+    neon?: {
+      [key: string]: string
     }
   }
 }
 
-// Exemplo: Tipos de usuário
-export interface User {
-  id: string;
-  name: string;
-  email: string;
-  avatar?: string;
-  role: UserRole;
-  createdAt: Date;
-  updatedAt: Date;
-}
+declare global {
+  declare interface ColorVariants {
+    base: string
+    light: string
+    light02: string
+    light04: string
+    light08: string
+    light20: string
+    light30: string
+    light40: string
+    light50: string
+    dark: string
+    dark02: string
+    dark04: string
+    dark08: string
+    dark20: string
+    dark30: string
+    dark40: string
+    dark50: string
+  }
 
-export enum UserRole {
-  ADMIN = 'admin',
-  USER = 'user',
-  MODERATOR = 'moderator'
-}
+  declare interface Product {
+    id: string
+    name: string
+    category: string
+    description: string
+    price: string
+    thumbnail: string
+    gallery: string[]
+    discount: number
+    stock: number
+    highlight: boolean
+    sold: number
+  }
 
-// Exemplo: Tipos de API Response
-export interface ApiResponse {
-  success: boolean;
-  data?: T;
-  message?: string;
-  errors?: string[];
-}
+  declare interface CartItem {
+    product: Product
+    quantity: string
+  }
 
-// Exemplo: Tipos de formulário
-export interface LoginForm {
-  email: string;
-  password: string;
-  rememberMe?: boolean;
-}
+  declare interface User {
+    id: string
+    name: string
+    email: string
+    password: string
+    avatar?: string
+    role: UserRole
+    createdAt: Date
+    updatedAt: Date
+  }
 
-export interface RegisterForm {
-  name: string;
-  email: string;
-  password: string;
-  confirmPassword: string;
-}
+  declare enum UserRole {
+    ADMIN = 'admin',
+    USER = 'user'
+  }
 
-// Exemplo: Tipos de componentes
-export interface ButtonProps {
-  variant?: 'primary' | 'secondary' | 'outline' | 'ghost';
-  size?: 'sm' | 'md' | 'lg';
-  loading?: boolean;
-  disabled?: boolean;
-  children: React.ReactNode;
-  onClick?: () => void;
-}
+  declare type RegisterResponse = {
+    user: User
+    token: string
+  }
 
-export interface ModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  title?: string;
-  children: React.ReactNode;
-  size?: 'sm' | 'md' | 'lg' | 'xl';
-}
+  declare interface RegisterPayLoad {
+    name: string
+    email: string
+    password: string
+  }
 
-// Exemplo: Tipos de estado
-export interface AuthState {
-  user: User | null;
-  isAuthenticated: boolean;
-  isLoading: boolean;
-  error: string | null;
-}
+  declare interface LoginResponse {
+    user: User
+    token: string
+  }
 
-// Exemplo: Tipos de produtos (e-commerce)
-export interface Product {
-  id: string;
-  name: string;
-  description: string;
-  price: number;
-  images: string[];
-  category: string;
-  stock: number;
-  featured: boolean;
-}
+  declare interface LoginPayLoad {
+    email: string
+    password: string
+  }
 
-export interface CartItem {
-  product: Product;
-  quantity: number;
-}
+  declare interface MessagePayLoad {
+    name: string
+    email: string
+    tel: string
+    type: string
+    message: string
+  }
 
-export interface CartState {
-  items: CartItem[];
-  total: number;
-  isOpen: boolean;
+  declare interface MessageResponse {
+    id: string
+    name: string
+    email: string
+    tel: string
+    type: string
+    message: string
+    createdAt: Date
+    updatedAt: Date
+  }
+
+  declare interface VerifyResponse {
+    id: string
+    name: string
+    email: string
+  }
 }
     `
   );
@@ -577,8 +599,8 @@ import Link from 'next/link'
 import React, { forwardRef } from 'react'
 import { ButtonContent, IconWrapper, StyledButton } from './ButtonStyles'
 
-type ButtonVariants = 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger'
-type ButtonSizes = 'sm' | 'md' | 'lg'
+type ButtonVariants = 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger' | 'cian'
+type ButtonSizes = 'xs' | 'sm' | 'md' | 'lg'
 
 export interface CommonButtonProps {
   variant?: ButtonVariants
@@ -595,7 +617,9 @@ export interface CommonButtonProps {
   rel?: string
 }
 
-export type ButtonProps = CommonButtonProps & React.HTMLAttributes<HTMLButtonElement>
+export type ButtonProps = CommonButtonProps &
+  Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, 'type'> &
+  React.AnchorHTMLAttributes<HTMLAnchorElement>
 
 export const Button = forwardRef<HTMLButtonElement | HTMLAnchorElement, ButtonProps>(
   (
@@ -618,7 +642,34 @@ export const Button = forwardRef<HTMLButtonElement | HTMLAnchorElement, ButtonPr
   ) => {
     const isDisabled = disabled || loading
 
-    const content = (
+    const innerContent = (
+      <ButtonContent $loading={loading}>
+        {leftIcon && <IconWrapper>{leftIcon}</IconWrapper>}
+        {children}
+        {rightIcon && <IconWrapper>{rightIcon}</IconWrapper>}
+      </ButtonContent>
+    )
+
+    if (href) {
+      return (
+        <Link href={href} target={target} rel={rel}>
+          <StyledButton
+            ref={ref as React.Ref<HTMLButtonElement>}
+            $variant={variant}
+            $size={size}
+            $loading={loading}
+            $fullWidth={fullWidth}
+            aria-disabled={isDisabled}
+            {...props}
+          >
+            {innerContent}
+          </StyledButton>
+        </Link>
+      )
+    }
+
+    // Caso botão normal
+    return (
       <StyledButton
         ref={ref as React.Ref<HTMLButtonElement>}
         $variant={variant}
@@ -627,26 +678,12 @@ export const Button = forwardRef<HTMLButtonElement | HTMLAnchorElement, ButtonPr
         $fullWidth={fullWidth}
         disabled={isDisabled}
         aria-disabled={isDisabled}
-        type={!href ? type : undefined}
+        type={type}
         {...props}
       >
-        <ButtonContent $loading={loading}>
-          {leftIcon && <IconWrapper>{leftIcon}</IconWrapper>}
-          {children}
-          {rightIcon && <IconWrapper>{rightIcon}</IconWrapper>}
-        </ButtonContent>
+        {innerContent}
       </StyledButton>
     )
-
-    if (href) {
-      return (
-        <Link href={href} target={target} rel={rel} legacyBehavior={false}>
-          {content}
-        </Link>
-      )
-    }
-
-    return content
   }
 )
 
@@ -660,12 +697,13 @@ export default Button
   await writeFile(
     path.join(appPath, "src/components/ui/Button/ButtonStyles.tsx"),
     `
+
 import { media } from '@/styles/theme'
 import styled, { css } from 'styled-components'
 
 interface StyledButtonProps {
-  $variant: 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger'
-  $size: 'sm' | 'md' | 'lg'
+  $variant: 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger' | 'cian'
+  $size: 'xs' | 'sm' | 'md' | 'lg'
   $loading: boolean
   $fullWidth: boolean
 }
@@ -690,7 +728,7 @@ const buttonVariants = {
 
   secondary: css\`
     background-color: \${({ theme }) => theme.colors.baseGreen.base};
-    color: \${({ theme }) => theme.colors.textColor};
+    color: \${({ theme }) => theme.colors.baseBlack.base};
     border: 2px solid \${({ theme }) => theme.colors.baseGreen.base};
 
     &:hover:not(:disabled) {
@@ -751,10 +789,33 @@ const buttonVariants = {
       background-color: \${({ theme }) => theme.colors.baseRed.dark20};
       transform: translateY(0);
     }
-  \`
+  \`,
+
+  cian: css\`
+    background-color: \${({ theme }) => theme.colors.baseCyan.base};
+    color: \${({ theme }) => theme.colors.baseCyan.dark40};
+    border: 2px solid \${({ theme }) => theme.colors.baseCyan.base};
+
+    &:hover:not(:disabled) {
+      background-color: \${({ theme }) => theme.colors.baseCyan.dark30};
+      border-color: \${({ theme }) => theme.colors.baseCyan.light30};
+      color: \${({ theme }) => theme.colors.baseCyan.light30};
+      transform: translateY(-1px);
+    }
+
+    &:active:not(:disabled) {
+      background-color: \${({ theme }) => theme.colors.baseCyan.dark20};
+      transform: translateY(0);
+    }
+    \`
 }
 
 const buttonSizes = {
+  xs: css\`
+    padding: 4px 10px;
+    font-size: 10px;
+    min-height: 22px;
+  \`,
   sm: css\`
     padding: 8px 16px;
     font-size: 12px;
@@ -785,7 +846,7 @@ export const StyledButton = styled.button<StyledButtonProps>\`
   text-decoration: none;
   text-align: center;
   white-space: nowrap;
-  border-radius: 4px;
+  border-radius: 8px;
   cursor: pointer;
   transition: all 0.2s ease-in-out;
   position: relative;
@@ -834,7 +895,7 @@ export const StyledButton = styled.button<StyledButtonProps>\`
       }
     \`}
 
-  \&:focus-visible {
+  &:focus-visible {
     outline: 2px solid \${({ theme }) => theme.colors.baseBlue.base};
     outline-offset: 2px;
   }
@@ -863,7 +924,6 @@ export const IconWrapper = styled.span\`
     height: 1em;
   }
 \`
-
     `
   );
 
@@ -997,9 +1057,11 @@ export const ErrorMessageContent = styled.div\`
   await writeFile(
     path.join(appPath, "src/components/ui/MaskedInput/MaskedInput.tsx"),
     `
-import { useField } from 'formik'
-import { IMaskInput } from 'react-imask'
-import { MaskedInputContainer } from './MaskedInputStyles'
+import { useField } from "formik"
+import { useState } from "react"
+import { AiOutlineEye, AiOutlineEyeInvisible } from "react-icons/ai"
+import { IMaskInput } from "react-imask"
+import { MaskedInputContainer, PasswordToggle } from "./MaskedInputStyles"
 
 type MaskedInputProps = {
   name: string
@@ -1009,40 +1071,88 @@ type MaskedInputProps = {
   showError?: boolean
   type?: string
   id?: string
+  as?: "input" | "textarea" | "select"
+  children?: React.ReactNode
+  password?: boolean
 }
 
-export const MaskedInput = ({ name, mask, placeholder, className, showError = false, type = 'text', id }: MaskedInputProps) => {
+export const MaskedInput = ({
+  name,
+  mask,
+  placeholder,
+  className,
+  showError = true,
+  type = "text",
+  id,
+  as = "input",
+  children,
+  password = false,
+}: MaskedInputProps) => {
   const [field, meta, helpers] = useField(name)
+  const [showPassword, setShowPassword] = useState(false)
+
+  const hasError = meta.touched && !!meta.error
+
+  const inputType = password ? (showPassword ? "text" : "password") : type
 
   const commonProps = {
     ...field,
     placeholder,
-    className,
-    type,
+    className: \`\${className ?? ""} \${hasError ? "error" : ""}\`,
+    type: inputType,
     id,
     onBlur: () => helpers.setTouched(true),
   }
 
+  let InputElement
+
+  if (mask && as === "input") {
+    InputElement = (
+      <IMaskInput
+        {...commonProps}
+        mask={mask}
+        value={String(field.value ?? "")}
+        onAccept={(value: string) => helpers.setValue(value)}
+      />
+    )
+  } else if (as === "textarea") {
+    InputElement = (
+      <textarea
+        {...commonProps}
+        value={String(field.value ?? "")}
+        onChange={(e) => helpers.setValue(e.target.value)}
+      />
+    )
+  } else if (as === "select") {
+    InputElement = (
+      <select
+        {...commonProps}
+        value={String(field.value ?? "")}
+        onChange={(e) => helpers.setValue(e.target.value)}
+      >
+        {children}
+      </select>
+    )
+  } else {
+    InputElement = (
+      <input
+        {...commonProps}
+        value={String(field.value ?? "")}
+        onChange={(e) => helpers.setValue(e.target.value)}
+      />
+    )
+  }
+
   return (
-    <MaskedInputContainer>
-      {mask ? (
-        <IMaskInput
-          {...commonProps}
-          mask={mask}
-          value={String(field.value ?? '')}
-          onAccept={(value: string) => helpers.setValue(value)}
-        />
-      ) : (
-        <input
-          {...commonProps}
-          value={String(field.value ?? '')}
-          onChange={(e) => helpers.setValue(e.target.value)}
-        />
+    <MaskedInputContainer $hasToggle={password}>
+      {InputElement}
+      {password && (
+        <PasswordToggle onClick={() => setShowPassword((prev) => !prev)}>
+          {showPassword ? <AiOutlineEyeInvisible /> : <AiOutlineEye />}
+        </PasswordToggle>
       )}
-      {showError && meta.touched && meta.error && (
-        <div style={{ color: 'red', fontSize: '0.875rem', marginTop: '0.25rem' }}>
-          {meta.error}
-        </div>
+      {showError && hasError && (
+        <div className="error-message">{meta.error}</div>
       )}
     </MaskedInputContainer>
   )
@@ -1058,14 +1168,24 @@ export const MaskedInput = ({ name, mask, placeholder, className, showError = fa
 import { theme } from '@/styles/theme'
 import { styled } from 'styled-components'
 
-export const MaskedInputContainer = styled.div\`
+export const MaskedInputContainer = styled.div<{ $hasToggle?: boolean }>\`
   width: 100%;
-  input {
+  position: relative;
+
+  input,
+  textarea,
+  select,
+  .imask-input {
     padding: 8px;
     width: 100%;
-    height: 40px;
     border-radius: 8px;
     border: 2px solid \${theme.colors.baseBlue.light20};
+    font-size: 1rem;
+    color: \${theme.colors.baseBlack.base};
+    background-color: \${theme.colors.baseBlue.light50};
+    transition:
+      border-color 0.2s ease,
+      background-color 0.2s ease;
 
     &:focus {
       outline: none;
@@ -1076,9 +1196,50 @@ export const MaskedInputContainer = styled.div\`
       border: 2px solid \${theme.colors.baseRed.base};
       background-color: \${theme.colors.baseRed.light02};
     }
+
+    /* Dá espaço extra se tiver toggle */
+    \${({ $hasToggle }) => $hasToggle && \`padding-right: 40px;\`}
+  }
+
+  input,
+  .imask-input {
+    height: 40px;
+  }
+
+  textarea {
+    min-height: 80px;
+    resize: none;
+    scrollbar-width: thin;
+    scrollbar-color: \${theme.colors.baseBlue.base} \${theme.colors.baseBlue.light20};
+  }
+
+  select {
+    height: 40px;
+    appearance: none;
+    background-image: url("data:image/svg+xml;utf8,<svg fill='%23000' height='16' viewBox='0 0 24 24' width='16' xmlns='http://www.w3.org/2000/svg'><path d='M7 10l5 5 5-5z'/></svg>");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    background-size: 16px;
+    padding-right: 32px;
+    cursor: pointer;
   }
 \`
 
+export const PasswordToggle = styled.div\`
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: 1.2rem;
+  color: \${theme.colors.baseBlack.base};
+
+  &:hover {
+    color: \${theme.colors.baseBlue.dark};
+  }
+\`
     `
   );
 
@@ -1132,55 +1293,121 @@ export const ModalWrapper = ({ isOpen, children, onClose }: ModalWrapperProps) =
     `
   );
 
-  //cria utils de checagem de input
+  //cria componente TypeWriter
   await writeFile(
-    path.join(appPath, "src/utils/maskedInputCheckUtils.ts"),
-    `
-import { FormikProps } from 'formik'
-
-export const checkInputHasError = <T>(fieldName: keyof T, form: FormikProps<T>): boolean => {
-  const isTouched = fieldName in form.touched
-  const hasError = fieldName in form.errors
-  return isTouched && hasError
-}
-    `
-  );
-
-  //cria o componente AuthProvider
-  await writeFile(
-    path.join(appPath, "src/components/ui/AuthProvider/AuthProvider.tsx"),
+    path.join(appPath, "src/components/ui/TypeWriter/TypeWriter.tsx"),
     `
 'use client'
 
-import { useAppDispatch } from '@/hooks/useAppDispatch'
-import { login, logout } from '@/redux/slices/authSlice'
-import { useEffect } from 'react'
+import { useEffect, useState } from "react"
+import styled, { css, keyframes } from "styled-components"
 
-export function AuthProvider() {
-  const dispatch = useAppDispatch()
+// Animação do cursor piscando
+const blink = keyframes\`
+  0%, 50% { opacity: 1; }
+  50.01%, 100% { opacity: 0; }
+\`
+
+// Props para estilização
+interface StyleProps {
+  fontSize?: string
+  fontFamily?: string
+  fontWeight?: number | string
+  color?: string
+  letterSpacing?: string
+  $cursorColor?: string
+}
+
+// Container do texto + cursor
+const Wrapper = styled.div<StyleProps>\`
+  display: inline-block;
+  align-items: center;
+  white-space: pre-wrap;
+
+  \${({ fontSize }) => fontSize && css\`font-size: \${fontSize};\`}
+  \${({ fontFamily }) => fontFamily && css\`font-family: \${fontFamily};\`}
+  \${({ fontWeight }) => fontWeight && css\`font-weight: \${fontWeight};\`}
+  \${({ color }) => color && css\`color: \${color};\`}
+  \${({ letterSpacing }) => letterSpacing && css\`letter-spacing: \${letterSpacing};\`}
+\`
+
+const Cursor = styled.span<StyleProps>\`
+  display: inline-block;
+  width: 2px;
+  height: 1em;
+  margin-left: 2px;
+  vertical-align: text-bottom;
+  animation: \${blink} 1s infinite;
+
+  \${({ $cursorColor, color }) => css\`
+    background: \${$cursorColor || color || "#000"};
+  \`}
+\`
+
+// Props do componente principal
+interface TypewriterProps extends StyleProps {
+  texts: string[] // lista de textos que vão aparecer
+  typingSpeed?: number // velocidade de digitar
+  erasingSpeed?: number // velocidade de apagar
+  delayBetween?: number // tempo antes de apagar/escrever próximo
+}
+
+export default function Typewriter({
+  texts,
+  typingSpeed = 100,
+  erasingSpeed = 50,
+  delayBetween = 2000,
+  fontSize = "1.5rem",
+  fontFamily = "inherit", // herda a fonte do site por padrão
+  fontWeight = "normal",
+  color = "#000",
+  letterSpacing = "normal",
+  $cursorColor
+}: TypewriterProps) {
+  const [text, setText] = useState("")
+  const [index, setIndex] = useState(0) // índice do texto atual
+  const [subIndex, setSubIndex] = useState(0) // índice da letra
+  const [deleting, setDeleting] = useState(false)
 
   useEffect(() => {
-    const fetchUser = async () => {
-      try {
-        const res = await fetch('/api/auth/verify', {
-          credentials: 'include'
-        })
+    if (index >= texts.length) return
 
-        if (res.ok) {
-          const data = await res.json()
-          dispatch(login(data))
-        } else {
-          dispatch(logout())
-        }
-      } catch {
-        dispatch(logout())
-      }
+    if (!deleting && subIndex === texts[index].length) {
+      // espera um tempo antes de começar apagar
+      const timeout = setTimeout(() => setDeleting(true), delayBetween)
+      return () => clearTimeout(timeout)
     }
 
-    fetchUser()
-  }, [dispatch])
+    if (deleting && subIndex === 0) {
+      // terminou de apagar -> vai pro próximo texto
+      setDeleting(false)
+      setIndex((prev) => (prev + 1) % texts.length)
+      return
+    }
 
-  return null
+    const timeout = setTimeout(() => {
+      setSubIndex((prev) => prev + (deleting ? -1 : 1))
+    }, deleting ? erasingSpeed : typingSpeed)
+
+    return () => clearTimeout(timeout)
+  }, [subIndex, index, deleting, texts, typingSpeed, erasingSpeed, delayBetween])
+
+  useEffect(() => {
+    setText(texts[index].substring(0, subIndex))
+  }, [subIndex, index, texts])
+
+  return (
+    <Wrapper
+      fontSize={fontSize}
+      fontFamily={fontFamily}
+      fontWeight={fontWeight}
+      color={color}
+      letterSpacing={letterSpacing}
+    >
+      {text}
+      <Cursor $cursorColor={$cursorColor} color={color} />
+    </Wrapper>
+  )
 }
     `
   );
@@ -1230,7 +1457,6 @@ export default config
 import { store } from '@/redux/store'
 import { ReactNode } from 'react'
 import { Provider } from 'react-redux'
-import { AuthProvider } from './ui/AuthProvider/AuthProvider'
 import { ThemeProvider } from 'styled-components'
 import { theme } from '@/styles/theme'
 
@@ -1238,7 +1464,6 @@ export function Providers({ children }: { children: ReactNode }) {
   return (
     <Provider store={store}>
       <ThemeProvider theme={theme}>
-        <AuthProvider />
         {children}
       </ThemeProvider>
     </Provider>
@@ -1322,61 +1547,21 @@ export default authSlice.reducer
   } else {
     await writeFile(
       path.join(appPath, "src/redux/store.ts"),
-      `// 🏪 REDUX STORE - Configuração simples do gerenciamento de estado
+      `
+// 🏪 REDUX STORE - Configuração simples do gerenciamento de estado
 
 import { configureStore } from '@reduxjs/toolkit'
-import authReducer from './slices/authSlice'
 
 export const store = configureStore({
   reducer: {
-    auth: authReducer
-  }
+    // Adicione seus reducers aqui
+  },
+  middleware: getDefaultMiddleware => getDefaultMiddleware().concat(apiSlice.middleware)
 })
 
 export type RootState = ReturnType<typeof store.getState>
 export type AppDispatch = typeof store.dispatch
-`
-    );
-
-    // AuthSlice simples
-    await writeFile(
-      path.join(appPath, "src/redux/slices/authSlice.ts"),
-      `// 🔐 AUTH SLICE - Gerenciamento de estado de autenticação
-
-import { createSlice, PayloadAction } from '@reduxjs/toolkit'
-
-interface AuthState {
-  user: {
-    id: string
-    name: string
-    email: string
-  } | null
-  isAuthenticated: boolean
-}
-
-const initialState: AuthState = {
-  user: null,
-  isAuthenticated: false
-}
-
-const authSlice = createSlice({
-  name: 'auth',
-  initialState,
-  reducers: {
-    login: (state, action: PayloadAction<{ id: string; name: string; email: string }>) => {
-      state.isAuthenticated = true
-      state.user = action.payload
-    },
-    logout: (state) => {
-      state.isAuthenticated = false
-      state.user = null
-    }
-  }
-})
-
-export const { login, logout } = authSlice.actions
-export default authSlice.reducer
-`
+      `
     );
   }
 
@@ -1386,6 +1571,27 @@ export default authSlice.reducer
 
     // Executar prisma init
     execCommand("npx prisma init", appPath);
+
+    // store baseado na escolha do backend
+    await writeFile(
+      path.join(appPath, "src/redux/store.ts"),
+      `
+// 🏪 REDUX STORE - Configuração simples do gerenciamento de estado
+
+import { configureStore } from '@reduxjs/toolkit'
+import { apiSlice } from './slices/apiSlice'
+
+export const store = configureStore({
+  reducer: {
+    [apiSlice.reducerPath]: apiSlice.reducer
+  },
+  middleware: getDefaultMiddleware => getDefaultMiddleware().concat(apiSlice.middleware)
+})
+
+export type RootState = ReturnType<typeof store.getState>
+export type AppDispatch = typeof store.dispatch
+      `
+    );
 
     // Schema do Prisma com comentários
     await writeFile(
@@ -1404,12 +1610,19 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum Role {
+  ADMIN
+  USER
+}
+
 // 👤 MODEL USER - Modelo básico de usuário
 model User {
-  id        String   @id @default(cuid())
+  id        String   @id @default(uuid())
+  name      String
   email     String   @unique
-  name      String?
   password  String
+  avatar    String?
+  role      Role     @default(USER)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -1521,7 +1734,7 @@ export const config = {
     await writeFile(
       path.join(appPath, ".env"),
       `
-DATABASE_URL="prisma+postgres://accelerate.prisma-data.net/?api_key=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqd3RfaWQiOjEsInNlY3VyZV9rZXkiOiJza19ybXBkcEV4N0R6MG9RYllRNDlCdUMiLCJhcGlfa2V5IjoiMDFLMVJIUzk0NEozMTFaQVNUSFdETldTSjkiLCJ0ZW5hbnRfaWQiOiJjNTQ5MTU4ZmQ3NGJkNTFmNjc5OGUwOTZjOWIxOThkNjIwZmMwYTU1NjU1MTEyMWFkMTUzYzc0NmQ1OGQyZGYzIiwiaW50ZXJuYWxfc2VjcmV0IjoiM2UyNWZiMzAtZDZkNS00ZWE0LTg5NjEtZjkwNDQ0NjZjZjUxIn0.EYn7alhEwVNOUCH5nAq4NiUKNOi0CUIyT0iBHORaHEc"
+DATABASE_URL="prisma+postgres://accelerate.prisma-data.net/?api_key=sua-api-key"
 
 JWT_SECRET=alguma-coisa-bem-secreta
 
@@ -1542,8 +1755,9 @@ import { NextResponse } from 'next/server'
 export async function POST(req: Request) {
   try {
     const { email, password } = await req.json()
+    const normalizedEmail = email.toLowerCase().trim()
 
-    const user = await prisma.user.findUnique({ where: { email } })
+    const user = await prisma.user.findUnique({ where: { email: normalizedEmail } })
 
     if (!user) {
       return NextResponse.json({ message: 'Credenciais inválidas' }, { status: 401 })
@@ -1578,7 +1792,7 @@ export async function POST(req: Request) {
   }
 }
 
-    `
+      `
     );
 
     // cria o arquivo src/app/api/auth/logout/route.ts
@@ -1597,13 +1811,13 @@ export async function POST() {
       httpOnly: true,
       sameSite: 'lax',
       path: '/',
-      maxAge: 60 * 60 * 24 * 7 // 7 dias
+      maxAge: 0
     })
   )
   return response
 }
 
-    `
+      `
     );
 
     // cria o arquivo src/app/api/auth/register/route.ts
@@ -1611,36 +1825,39 @@ export async function POST() {
       path.join(appPath, "src/app/api/auth/register/route.ts"),
       `
 import { prisma } from '@/utils/prisma'
-import jwt from 'jsonwebtoken'
-import { NextRequest, NextResponse } from 'next/server'
+import bcrypt from 'bcryptjs'
+import { NextResponse } from 'next/server'
 
-export async function GET(req: NextRequest) {
-  try {
-    const token = req.cookies.get('token')?.value
+export async function POST(request: Request) {
+  const { name, email, password } = await request.json()
+  const adminEmail = ['renatornt13@gmail.com', 'email da laura aqui ']
+  const role = adminEmail.includes(email) ? 'ADMIN' : 'USER'
+  const normalizedEmail = email.toLowerCase().trim()
 
-    if (!token) {
-      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 })
-    }
-
-    const secret = process.env.JWT_SECRET!
-    const decoded = jwt.verify(token, secret) as { id: number }
-
-    const user = await prisma.user.findUnique({
-      where: { id: decoded.id.toString() },
-      select: { id: true, name: true, email: true }
-    })
-
-    if (!user) {
-      return NextResponse.json({ message: 'User not found' }, { status: 404 })
-    }
-
-    return NextResponse.json(user, { status: 200 })
-  } catch (error) {
-    console.error('Erro na verificação do token:', error)
-    return NextResponse.json({ message: 'Invalid token' }, { status: 401 })
+  if (!name || !email || !password) {
+    return NextResponse.json({ error: 'Dados incompletos' }, { status: 400 })
   }
+
+  const existingUser = await prisma.user.findUnique({ where: { email: normalizedEmail } })
+  if (existingUser) {
+    return NextResponse.json({ error: 'Usuário já existe' }, { status: 400 })
+  }
+
+  const hashedPassword = await bcrypt.hash(password, 10)
+
+  const newUser = await prisma.user.create({
+    data: {
+      name,
+      email: normalizedEmail,
+      password: hashedPassword,
+      role
+    }
+  })
+
+  return NextResponse.json({ user: { id: newUser.id, name: newUser.name, email: newUser.email } })
 }
-    `
+
+      `
     );
 
     // cria o arquivo src/app/api/auth/verify/route.ts
@@ -1660,11 +1877,11 @@ export async function GET(req: NextRequest) {
     }
 
     const secret = process.env.JWT_SECRET!
-    const decoded = jwt.verify(token, secret) as { id: number }
+    const decoded = jwt.verify(token, secret) as { id: string }
 
     const user = await prisma.user.findUnique({
       where: { id: decoded.id },
-      select: { id: true, name: true, email: true }
+      select: { id: true, name: true, email: true, role: true, avatar: true, createdAt: true, updatedAt: true }
     })
 
     if (!user) {
@@ -1678,7 +1895,105 @@ export async function GET(req: NextRequest) {
   }
 }
 
-    `
+      `
+    );
+
+    // cria o arquivo de mensagem de usuario
+    await writeFile(
+      path.join(appPath, "src/app/api/users/message/route.ts"),
+      `
+import { prisma } from '@/utils/prisma'
+import { NextRequest, NextResponse } from 'next/server'
+
+export async function POST(request: NextRequest) {
+  const data = await request.json()
+
+  const { name, email, tel, type, message } = data
+
+  if (!name || !email || !tel || !type || !message) {
+    return NextResponse.json({ message: 'Preencha todos os campos.' }, { status: 400 })
+  }
+
+  const contact = await prisma.contactForm.create({
+    data: {
+      name,
+      email,
+      tel,
+      type,
+      message
+    }
+  })
+
+  return NextResponse.json(contact)
+}
+
+      `
+    );
+
+    //cria o arquivo src/redux/slices/apiSlice.ts
+    await writeFile(
+      path.join(appPath, "src/redux/slices/apiSlice.ts"),
+      `
+import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react'
+
+export const apiSlice = createApi({
+  reducerPath: 'api',
+  baseQuery: fetchBaseQuery({
+    baseUrl: '/api',
+    credentials: 'include'
+  }),
+  endpoints: builder => ({
+    // endpoints
+    getProducts: builder.query<Product[], void>({
+      query: () => 'products'
+    }),
+    getProductById: builder.query<Product, string>({
+      query: id => \`products/\${id}\`
+    }),
+    gethighlightedProducts: builder.query<Product[], void>({
+      query: () => ({
+        url: 'products',
+        params: {
+          highlight: true
+        }
+      })
+    }),
+    userMessage: builder.mutation<MessageResponse, MessagePayLoad>({
+      query: body => ({
+        url: 'users/message',
+        method: 'POST',
+        body
+      })
+    }),
+    registerUser: builder.mutation<RegisterResponse, RegisterPayLoad>({
+      query: body => ({
+        url: 'users',
+        method: 'POST',
+        body
+      })
+    }),
+    loginUser: builder.mutation<LoginResponse, LoginPayLoad>({
+      query: body => ({
+        url: 'auth/login',
+        method: 'POST',
+        body
+      })
+    }),
+    logoutUser: builder.mutation<{ success: boolean }, void>({
+      query: () => ({
+        url: 'auth/logout',
+        method: 'POST'
+      })
+    }),
+    verifyUser: builder.query<VerifyResponse, void>({
+      query: () => 'auth/verify'
+    })
+  })
+})
+
+export const { useRegisterUserMutation, useLoginUserMutation, useLogoutUserMutation, useVerifyUserQuery } = apiSlice
+
+      `
     );
   }
 
@@ -1721,7 +2036,8 @@ async function createStyledComponentsFiles(appPath) {
   // Global Styles para Styled Components atualizado
   await writeFile(
     path.join(appPath, "src/styles/globalStyles.tsx"),
-    `'use client'
+    `
+'use client'
 
 // 🎨 GLOBAL STYLES - Estilos globais com Styled Components
 
@@ -1747,6 +2063,19 @@ export const GlobalStyles = createGlobalStyle\`
   .container {
     max-width: 1024px;
     margin: 0 auto;
+    width: 100%;
+
+    \${media.pc}{
+      width: 95%;
+    }
+
+    \${media.tablet}{
+      width: 95%;
+    }
+
+    \${media.mobile}{
+      width: 95%;
+    }
   }
 \`;
 
@@ -1811,6 +2140,52 @@ export const MinorTextH4 = styled.h3\`
   font-weight: 300;
   margin-bottom: 8px;
   color: \${theme.colors.baseBlue.dark30};
+\`
+
+export const GradientTextH2 = styled.h2\`
+  font-size: 38px;
+  font-weight: 600;
+  color: \${theme.colors.textColor};
+  font-size: 1.8rem;
+  font-weight: 700;
+  background: linear-gradient(135deg, \${themeConfig.dark.colors.neon.pink1}, \${themeConfig.dark.colors.neon.blue2});
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+\`
+
+export const GradientSpan = styled.span\`
+  font-size: 38px;
+  font-weight: 600;
+  color: \${theme.colors.textColor};
+  font-size: 1.8rem;
+  font-weight: 700;
+  background: linear-gradient(135deg, \${themeConfig.dark.colors.neon.pink1}, \${themeConfig.dark.colors.neon.blue2});
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+
+  &:hover {
+    background: linear-gradient(360deg, \${themeConfig.light.colors.neon.blue2}, \${themeConfig.light.colors.neon.pink1});
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+\`
+
+export const Line = styled.span.attrs({ 'aria-hidden': true })\`
+  width: 80px;
+  height: 2px;
+  background: \${({ theme }) => theme.colors.baseBlack.light50};
+  margin: 0 2px;
+\`
+
+export const Dot = styled.span.attrs({ 'aria-hidden': true })\`
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: \${({ theme }) => theme.colors.baseBlue.base};
+  margin: 0 2px;
 \`
 `
   );

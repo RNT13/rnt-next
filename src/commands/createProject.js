@@ -5749,14 +5749,14 @@ import styled from 'styled-components'
 import { theme } from '@/styles/theme'
 
 const FooterContainer = styled.footer\`
-  background-color: \${theme.colors.primaryColor};
-  border-top: 1px solid \${theme.colors.secondaryColor};
+  background-image: linear-gradient(90deg, \${theme.colors.baseBlack.base}, \${theme.colors.baseBlack.light});
+  border-top: 2px solid \${theme.colors.baseBlue.base};
   padding: 40px 20px 20px;
   margin-top: auto;
   text-align: center;
 
   p {
-    color: \${theme.colors.textColor};
+    color: \${theme.colors.baseBlue.light30};
     font-size: 14px;
     opacity: 0.8;
   }

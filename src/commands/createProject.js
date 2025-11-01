@@ -4782,7 +4782,7 @@ async function createStyledComponentsFiles(appPath) {
   // 🎨 GLOBAL STYLES - Estilos globais com Styled Components
   
   import styled, { createGlobalStyle } from 'styled-components';
-  import { theme } from './theme';
+  import { media, theme, themeConfig } from './theme'
   
   export const GlobalStyles = createGlobalStyle\`
     * {
@@ -5366,14 +5366,12 @@ import styled from 'styled-components'
 import { theme } from '@/styles/theme'
 
 const MainContainer = styled.div\`
-  min-height: 100vh;
+  width: 100%;
+  height: 100vh;
   display: flex;
   flex-direction: column;
-  background-color: \${theme.colors.primaryColor};
+  background-image: linear-gradient(to bottom, \${theme.colors.baseBlack.light20}, \${theme.colors.baseBlack.dark30});
   padding: 60px 20px;
-  max-width: 1200px;
-  margin: 0 auto;
-  width: 100%;
 \`
 
 const HeroSection = styled.section\`
@@ -5385,7 +5383,7 @@ const HeroSection = styled.section\`
     font-weight: 700;
     color: \${theme.colors.textColor};
     margin-bottom: 20px;
-    background: linear-gradient(135deg, \${theme.colors.blue2}, \${theme.colors.yellow2});
+    background: linear-gradient(360deg, \${theme.colors.baseBlue.base}, \${theme.colors.baseBlue.light20});
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
@@ -5393,7 +5391,7 @@ const HeroSection = styled.section\`
 
   p {
     font-size: 1.25rem;
-    color: \${theme.colors.gray2};
+    color: \${theme.colors.baseBlue.light30};
     max-width: 600px;
     margin: 0 auto;
     line-height: 1.6;
@@ -5679,8 +5677,8 @@ const HeaderContainer = styled.header\`
   align-items: center;
   justify-content: space-between;
   padding: 20px;
-  background-color: \${theme.colors.primaryColor};
-  border-bottom: 1px solid \${theme.colors.secondaryColor};
+  background-image: linear-gradient(90deg, \${theme.colors.baseBlack.base}, \${theme.colors.baseBlack.light});
+  border-bottom: 2px solid \${theme.colors.baseBlue.base};
   position: sticky;
   top: 0;
   z-index: 100;
@@ -5691,7 +5689,7 @@ const Logo = styled.div\`
     color: \${theme.colors.textColor};
     font-size: 1.8rem;
     font-weight: 700;
-    background: linear-gradient(135deg, \${theme.colors.blue2}, \${theme.colors.yellow2});
+    background: linear-gradient(360deg, \${theme.colors.baseBlue.base}, \${theme.colors.baseBlue.light20});
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;

@@ -58,6 +58,7 @@ export async function createProject(config) {
     "@reduxjs/toolkit",
     "immer",
     "redux",
+    "redux-persist",
     "clsx",
     "class-variance-authority",
     "lucide-react",
@@ -144,6 +145,7 @@ export async function createProject(config) {
       "src/components/ui/ModalWrapper",
       "src/components/ui/ErrorMessage",
       "src/components/ui/MaskedInput",
+      "src/components/ui/Box",
       "src/components/layout",
       "src/components/layout/header",
       "src/components/layout/footer"
@@ -350,274 +352,59 @@ declare global {
     dark50: string
   }
 
-  type TagType = keyof typeof TAG_CONFIG
-
-  // -------------------------------------
-  // Enums (Status e Roles)
-  // -------------------------------------
-  enum UserRole {
-    ADMIN = 'ADMIN',
-    USER = 'USER'
-  }
-
-  enum MessageStatus {
-    NEW = 'NEW',
-    READ = 'READ',
-    ANSWERED = 'ANSWERED'
-  }
-
-  enum OrderStatus {
-    PAID = 'PAID',
-    PROCESSING = 'PROCESSING',
-    SHIPPED = 'SHIPPED',
-    DELIVERED = 'DELIVERED',
-    CANCELED = 'CANCELED',
-    FAILED = 'FAILED',
-    REFUNDED = 'REFUNDED'
-  }
-
-  enum PaymentMethod {
-    BOLETO = 'BOLETO',
-    CREDIT_CARD = 'CREDIT_CARD',
-    DEBIT_CARD = 'DEBIT_CARD',
-    PIX = 'PIX',
-    PENDING = 'PENDING'
-  }
-
-  // -------------------------------------
-  // Entidades do Banco de Dados (Models)
-  // -------------------------------------
-  interface Category {
-    id: string
-    name: string
-    slug: string
-    createdAt: Date
-    updatedAt: Date
-  }
-
-  interface Product {
-    id: string
-    name: string
-    categoryId: string
-    category: Category
-    description: string
-    originalPrice: number
-    salePrice: number
-    discount: number
-    thumbnail: string
-    gallery: string[]
-    stock: number
-    highlight: boolean
-    sold: number
-    active: boolean
-    weight: number
-    height: number
-    width: number
-    length: number
-    createdAt: Date
-    updatedAt: Date
-  }
-
-  interface Address {
-    id: string
-    label: string
-    tel: string
-    zipCode: string
-    street: string
-    complement?: string
-    number: string
-    city: string
-    state: string
-  }
-
-  interface User {
-    id: string
-    name: string
-    email: string
-    password: string
-    avatar?: string
-    role: UserRole
-    address?: Address[]
-    createdAt: Date
-    updatedAt: Date
-  }
-
-  interface CartItem {
-    id: number
-    product: Product
-    quantity: number
-    cartId: number
-  }
-
-  interface Cart {
-    id: number
-    userId: string
-    items: CartItem[]
-  }
-
-  interface OrderProduct {
-    id: string
-    product: Product
-    productId: string
-    orderId: string
-    quantity: number
-    price: number
-  }
-
-  interface Order {
-    id: string
-    user: User
-    userId: string
-    products: OrderProduct[]
-    totalAmount: number
-    paymentMethod: PaymentMethod
-    status: OrderStatus
-    shippingAddress: Address
-    shippingCost: number
-    trackingCode?: string
-    stripePaymentId?: string
-    createdAt: Date
-    updatedAt: Date
-    statusHistory?: {
-      status: OrderStatus
-      changedAt: Date
-    }[]
-  }
-
-  interface Message {
-    id: string
-    name: string
-    email: string
-    tel: string
-    type: string
-    message: string
-    status: MessageStatus
-    response?: string
-    user?: User
-    createdAt: Date
-    updatedAt: Date
-  }
-
   // -------------------------------------
   // Payloads e Respostas de API
   // -------------------------------------
 
-  // Auth
-  interface RegisterPayload {
-    name: string
+  interface RefreshResponse {
+    access: string
+  }
+
+  interface LoginRequest {
     email: string
     password: string
   }
-  interface RegisterResponse {
-    user: User
-    token: string
-    message: string
-    success: boolean
-  }
-  interface LoginPayload {
-    email: string
-    password: string
-  }
+
   interface LoginResponse {
     user: User
-    token: string
     message: string
+    access: string
+    refresh: string
     success: boolean
   }
-  interface VerifyResponse {
-    id: string
-    name: string
+
+  interface RegisterRequest {
+    id?: number
     email: string
-    role: UserRole
-    avatar: string
-    createdAt: Date
-    updatedAt: Date
-    defaultAddressId: string
+    full_name: string
+    username: string
+    password: string
+    confirm_password: string
   }
 
-  // Product
-  interface NewProductPayload {
-    id?: string
-    name: string
-    categoryId: string
-    description: string
-    originalPrice?: number
-    thumbnail: string
-    gallery: string[]
-    discount: number
-    stock: number
-    highlight: boolean
-    sold: number
-    active: boolean
-  }
-
-  // Cart
-  interface SimplifiedCartItem {
-    productId: string
-    quantity: number
-    salePrice: number
-  }
-  interface NewCartItemPayload {
-    productId: string
-    quantity: number
-  }
-  interface UpdateCartItemPayload {
-    quantity: number
-  }
-
-  // Address
-  interface NewAddressPayload {
-    label: string
-    tel: string
-    zipCode: string
-    street: string
-    complement?: string
-    number: string
-    city: string
-    state: string
-  }
-
-  // Order
-  interface NewOrderRequestBody {
-    cartId: number
-    addressId: string
-    totalAmount: number
-    shippingCost: number
-  }
-  interface PendingOrder {
-    order: Order
-    clientSecret: string
-  }
-
-  // Message
-  interface MessagePayload {
-    name: string
-    email: string
-    tel: string
-    type: string
+  interface RegisterResponse {
     message: string
-    response?: string
+    access: string
+    refresh: string
   }
 
-  // Shipping
-  interface ShippingRequest {
-    cepDestino: string
-    peso: number
-    largura: number
-    altura: number
-    comprimento: number
-  }
-  interface ShippingResponse {
-    price: number
-    prazo: number
+  interface PaginatedResponse<T> {
+    count: number
+    next: string | null
+    previous: string | null
+    results: T[]
   }
 
-  // Genérico
-  interface ApiErrorResponse {
-    data?: {
-      message?: string
+  interface ApiResponse {
+    status: number
+    data: {
+      detail: string
+      [key: string]: string
     }
-    status?: number
+    statusText: string
+    message: string
+    success: boolean
+    error: string
   }
 }
 
@@ -905,7 +692,7 @@ import Link from 'next/link'
 import React, { forwardRef } from 'react'
 import { ButtonContent, IconWrapper, StyledButton } from './ButtonStyles'
 
-type ButtonVariants = 'primary' | 'secondary' | 'toggle' | 'outline' | 'ghost' | 'link' | 'danger' | 'cian' | 'pink'
+type ButtonVariants = 'primary' | 'secondary' | 'toggle' | 'outline' | 'ghost' | 'link' | 'danger' | 'cian' | 'pink' | 'glass'
 type ButtonSizes = 'xs' | 'sm' | 'md' | 'lg'
 
 export interface CommonButtonProps {
@@ -1000,18 +787,17 @@ export const Button = forwardRef<HTMLButtonElement | HTMLAnchorElement, ButtonPr
 
 Button.displayName = 'Button'
 export default Button
-
-        `
+      `
     );
+
     await writeFile(
       path.join(appPath, "src/components/ui/Button/ButtonStyles.tsx"),
       `
-
 import { media, theme } from '@/styles/theme'
 import styled, { css } from 'styled-components'
 
 interface StyledButtonProps {
-  $variant: 'primary' | 'secondary' | 'toggle' | 'outline' | 'ghost' | 'link' | 'danger' | 'cian' | 'pink'
+  $variant: 'primary' | 'secondary' | 'toggle' | 'outline' | 'ghost' | 'link' | 'danger' | 'cian' | 'pink' | 'glass'
   $size: 'xs' | 'sm' | 'md' | 'lg'
   $loading: boolean
   $fullWidth: boolean
@@ -1144,7 +930,7 @@ const buttonVariants = {
     background-color: \${({ theme }) => theme.colors.baseRed.base};
     color: \${({ theme }) => theme.colors.textColor};
     border: 2px solid \${({ theme }) => theme.colors.baseRed.base};
-    box-shadow:  4px 4px 4px\${({ theme }) => theme.colors.baseRed.base};
+    box-shadow:  4px 4px 4px \${({ theme }) => theme.colors.baseRed.base};
 
     &:hover:not(:disabled) {
       background-color: \${({ theme }) => theme.colors.baseRed.dark};
@@ -1196,7 +982,38 @@ const buttonVariants = {
       background-color: \${({ theme }) => theme.colors.pinkColor};
       transform: translateY(0);
     }
-    \`
+    \`,
+
+  glass: css\`
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(10px) saturate(180%);
+  -webkit-backdrop-filter: blur(10px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: rgba(255, 255, 255, 1);
+
+  /* 🌟 brilho lateral suave */
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.2);
+
+  /* opcional: highlight no topo */
+  border-top: 1px solid rgba(255, 255, 255, 0.3);
+
+  /* opcional: highlight na lateral esquerda */
+  border-left: 1px solid rgba(255, 255, 255, 0.3);
+
+    &:hover:not(:disabled) {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 1);
+      color: rgba(255, 255, 255, 1);
+      transform: translateY(-1px);
+      scale: 1.01;
+      box-shadow: 0 4px 30px rgba(255, 255, 255, 0.5)
+    }
+
+    &:active:not(:disabled) {
+      background-color: rgba(255, 255, 255, 1);
+      transform: translateY(0);
+    }
+  \`
 }
 
 const activeStyles = {
@@ -1254,6 +1071,13 @@ const activeStyles = {
     color: \${({ theme }) => theme.colors.fifthColor};
     box-shadow: 2px 2px 0px \${({ theme }) => theme.colors.fifthColor};
   \`,
+
+  glass: css\`
+    background: \${theme.colors.baseglass.light04};
+    border-color: \${theme.colors.baseglass.light08};
+    color: \${theme.colors.baseBlue.base};
+    box-shadow: 2px 2px 2px \${theme.colors.baseglass.light08};
+  \`
 }
 
 
@@ -1336,7 +1160,7 @@ export const StyledButton = styled.button<StyledButtonProps>\`
       &::before {
         content: "";
         position: absolute;
-        top: 50%;
+        top: 41%;
         left: 50%;
         width: 16px;
         height: 16px;
@@ -1374,13 +1198,18 @@ export const ButtonContent = styled.span<{ $loading: boolean }>\`
   gap: 8px;
   opacity: \${({ $loading }) => ($loading ? 0 : 1)};
   transition: opacity 0.2s ease-in-out;
-  }
 \`
 
 export const IconWrapper = styled.span\`
   display: flex;
   align-items: center;
   justify-content: center;
+  overflow: hidden;
+
+  img {
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
   }
 
   svg {
@@ -1398,8 +1227,9 @@ export const IconWrapper = styled.span\`
     border-radius: 50%;
   }
 \`
-        `
+      `
     );
+
     await writeFile(
       path.join(appPath, "src/components/ui/CartWrapper/CartWrapper.tsx"),
       `
@@ -1473,7 +1303,7 @@ export const CartWrapper = ({ isOpen, onClose, children }: CartWrapperProps) => 
     await writeFile(
       path.join(appPath, "src/components/ui/ErrorMessage/ErrorMessage.tsx"),
       `
-    import { BiSolidError } from "react-icons/bi";
+import { BiSolidError } from "react-icons/bi";
 import { ErrorMessageContainer, ErrorMessageContent } from "./ErrorMessageStyles";
 
 
@@ -1490,8 +1320,9 @@ export const ErrorMessage = ({ message }: Props) => (
   </ErrorMessageContainer>
 )
 
-    `
+      `
     );
+
     await writeFile(
       path.join(
         appPath,
@@ -1521,78 +1352,130 @@ export const ErrorMessageContent = styled.div\`
     margin-right: 0.5rem;
   }
 \`;
-    `
-    );
-    await writeFile(
-      path.join(appPath, "src/components/ui/MaskedInput/MaskedInput.tsx"),
-      `
-import { useField } from "formik";
-import { useState } from "react";
-import toast from "react-hot-toast";
-import { AiOutlineEye, AiOutlineEyeInvisible } from "react-icons/ai";
-import { IMaskInput } from "react-imask";
-import { MaskedInputContainer, PasswordToggle } from "./MaskedInputStyles";
 
-type MaskedInputProps = {
-  name: string;
-  mask?: string;
-  placeholder?: string;
-  className?: string;
-  showError?: boolean;
-  type?: string;
-  id?: string;
-  as?: "input" | "textarea" | "select";
-  children?: React.ReactNode;
-  password?: boolean;
-  fileUpload?: boolean;
-  multiple?: boolean;
-  uploadPreset?: string;
-  cloudName?: string;
+      `
+    );
+
+    await writeFile(
+      path.join(appPath, "src/components/ui/MaskedInput/BaseMaskedInput.tsx"),
+      `
+"use client";
+
+import Image from "next/image";
+import { JSX, useEffect, useRef, useState } from "react";
+import toast from "react-hot-toast";
+import {
+  AiOutlineEye,
+  AiOutlineEyeInvisible,
+  AiOutlineSearch,
+} from "react-icons/ai";
+import { IMaskInput } from "react-imask";
+import { ErrorDiv, FileTrigger, MaskedInputContainer, PasswordToggle, PreviewImageDiv, SearchIcon } from "./MaskedInputStyles";
+
+
+/* ============================================================
+ * TYPES
+ * ============================================================ */
+
+type FileChangePayload = {
+  files: File[];
+  previews: string[];
 };
 
-export const MaskedInput = ({
-  name,
-  mask,
+type Variant =
+  | "default"
+  | "masked"
+  | "password"
+  | "textarea"
+  | "select"
+  | "file"
+  | "search";
+
+type BaseMaskedInputProps = {
+  value: any;
+  onChange: (value: any) => void;
+
+  error?: string;
+  touched?: boolean;
+
+  variant?: Variant;
+  placeholder?: string;
+  className?: string;
+  id?: string;
+  type?: string;
+  children?: React.ReactNode;
+  showError?: boolean;
+  mask?: string;
+
+  /* Upload */
+  fileMode?: "local" | "cloudinary";
+  multiple?: boolean;
+  onFileChange?: (payload: FileChangePayload) => void;
+  onUploadingChange?: (uploading: boolean) => void;
+
+  /* Cloudinary */
+  uploadPreset?: string;
+  cloudName?: string;
+  previewMode?: "normal" | "replace";
+
+  onClick?: () => void;
+};
+
+/* ============================================================
+ * COMPONENT
+ * ============================================================ */
+
+export const BaseMaskedInput = ({
+  value,
+  onChange,
+  error,
+  touched,
+
+  variant = "default",
   placeholder,
   className,
-  showError = true,
-  type = "text",
   id,
-  as = "input",
+  type = "text",
   children,
-  password = false,
-  fileUpload = false,
+  showError = true,
+  mask,
+
+  fileMode = "cloudinary",
   multiple = false,
+  onFileChange,
+  onUploadingChange,
   uploadPreset,
   cloudName,
-}: MaskedInputProps) => {
-  const [field, meta, helpers] = useField(name);
+  previewMode = "normal",
+  onClick,
+}: BaseMaskedInputProps) => {
   const [showPassword, setShowPassword] = useState(false);
-  const hasError = meta.touched && !!meta.error;
+  const [internalPreviews, setInternalPreviews] = useState<string[]>([]);
 
-  // Separa a prop 'value' do resto das props do Formik.
-  // Isso é crucial para não passar 'value' para o input de arquivo.
-  const { value, ...restOfField } = field;
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const previousPreviews = useRef<string[]>([]);
 
-  const inputType = fileUpload
-    ? "file"
-    : password
-      ? showPassword
-        ? "text"
-        : "password"
-      : type;
+  const hasError = touched && Boolean(error);
 
-  // ========================
-  // Função de upload Cloudinary
-  // ========================
-  const handleFileUpload = async (files: FileList) => {
-    if (!files || !uploadPreset || !cloudName) return;
+  const commonProps = {
+    id,
+    placeholder,
+    className: \`\${className ?? ""} \${hasError ? "error" : ""}\`,
+  };
 
-    const uploadedUrls: string[] = [];
+  /* ============================================================
+   * CLOUDINARY
+   * ============================================================ */
 
-    for (let i = 0; i < files.length; i++) {
+  const uploadToCloudinary = async (files: File[]) => {
+    if (!uploadPreset || !cloudName) return;
+
+    onUploadingChange?.(true);
+    const urls: string[] = [];
+
+    for (const file of files) {
       const formData = new FormData();
-      formData.append("file", files[i]);
+      formData.append("file", file);
       formData.append("upload_preset", uploadPreset);
 
       try {
@@ -1601,260 +1484,498 @@ export const MaskedInput = ({
           { method: "POST", body: formData }
         );
         const data = await res.json();
-        uploadedUrls.push(data.secure_url);
-      } catch (err) {
-        console.error(err);
-        toast.error(\`Erro ao enviar imagem \${files[i].name}\`);
+        urls.push(data.secure_url);
+      } catch {
+        toast.error(\`Erro ao enviar \${file.name}\`);
       }
     }
 
-    if (multiple) {
-      // Garante que o valor inicial seja um array antes de espalhar as novas URLs
-      const existingValue = Array.isArray(value) ? value : [];
-      helpers.setValue([...existingValue, ...uploadedUrls]);
-    } else {
-      helpers.setValue(uploadedUrls[0]);
+    onChange(multiple ? urls : urls[0]);
+    toast.success("Upload concluído!");
+    onUploadingChange?.(false);
+  };
+
+  /* ============================================================
+   * FILE CHANGE
+   * ============================================================ */
+
+  const handleFileChange = (fileList: FileList | null) => {
+    if (!fileList) return;
+
+    const files = Array.from(fileList);
+    const previews = files.map((file) => URL.createObjectURL(file));
+
+    previousPreviews.current.forEach(URL.revokeObjectURL);
+    previousPreviews.current = previews;
+
+    if (previewMode !== "replace") {
+      setInternalPreviews(previews);
     }
 
-    toast.success("Upload concluído!");
+    onFileChange?.({ files, previews });
+
+    if (fileMode === "local") {
+      onChange(multiple ? files : files[0]);
+    } else {
+      uploadToCloudinary(files);
+    }
   };
 
-  // Props comuns para a maioria dos inputs, mas sem a prop 'value'.
-  const commonProps = {
-    ...restOfField,
-    placeholder,
-    className: \`\${className ?? ""} \${hasError ? "error" : ""}\`,
-    id,
-    onBlur: () => helpers.setTouched(true),
-  };
+  useEffect(() => {
+    return () => previousPreviews.current.forEach(URL.revokeObjectURL);
+  }, []);
 
-  let InputElement;
+  /* ============================================================
+   * VARIANTS
+   * ============================================================ */
 
-  // ========================
-  // Input de arquivo (Thumbnail ou Galeria) - Componente NÃO CONTROLADO
-  // ========================
-  if (fileUpload) {
-    InputElement = (
+  const variants: Record<Variant, JSX.Element> = {
+    default: (
       <input
-        name={name}
-        placeholder={placeholder}
-        className={\`\${className ?? ""} \${hasError ? "error" : ""}\`}
-        type="file"
-        accept="image/*"
-        multiple={multiple}
-        id={id}
-        onBlur={() => helpers.setTouched(true)}
-        onChange={(e) => {
-          const files = e.target.files;
-          if (!files) return;
-          handleFileUpload(files);
-        }}
+        {...commonProps}
+        type={type}
+        value={value ?? ""}
+        onChange={(e) => onChange(e.target.value)}
       />
-    );
-  }
-  // ========================
-  // Input com máscara - Componente CONTROLADO
-  // ========================
-  else if (mask && as === "input") {
-    InputElement = (
+    ),
+
+    masked: (
       <IMaskInput
         {...commonProps}
-        type={inputType}
-        mask={mask}
-        value={value !== undefined && value !== null ? String(value) : ""}
-        onAccept={(val: string) => helpers.setValue(val)}
+        mask={mask!}
+        value={String(value ?? "")}
+        onAccept={(val) => onChange(val)}
       />
-    );
-  }
-  // ========================
-  // Textarea - Componente CONTROLADO
-  // ========================
-  else if (as === "textarea") {
-    InputElement = (
+    ),
+
+    password: (
+      <>
+        <input
+          {...commonProps}
+          type={showPassword ? "text" : "password"}
+          value={value ?? ""}
+          onChange={(e) => onChange(e.target.value)}
+        />
+        <PasswordToggle onClick={() => setShowPassword((s) => !s)}>
+          {showPassword ? <AiOutlineEyeInvisible /> : <AiOutlineEye />}
+        </PasswordToggle>
+      </>
+    ),
+
+    textarea: (
       <textarea
         {...commonProps}
-        value={value !== undefined && value !== null ? String(value) : ""}
-        onChange={(e) => helpers.setValue(e.target.value)}
+        value={value ?? ""}
+        onChange={(e) => onChange(e.target.value)}
       />
-    );
-  }
-  // ========================
-  // Select - Componente CONTROLADO
-  // ========================
-  else if (as === "select") {
-    InputElement = (
+    ),
+
+    select: (
       <select
         {...commonProps}
-        value={value !== undefined && value !== null ? String(value) : ""}
-        onChange={(e) => helpers.setValue(e.target.value)}
+        value={value ?? ""}
+        onChange={(e) => onChange(e.target.value)}
       >
         {children}
       </select>
-    );
-  }
-  // ========================
-  // Input padrão - Componente CONTROLADO
-  // ========================
-  else {
-    InputElement = (
-      <input
-        {...commonProps}
-        type={inputType}
-        value={value !== undefined && value !== null ? String(value) : ""}
-        onChange={(e) => helpers.setValue(e.target.value)}
-      />
-    );
-  }
+    ),
+
+    file: (
+      <>
+        <input
+          type="file"
+          ref={fileInputRef}
+          multiple={multiple}
+          hidden
+          onChange={(e) => handleFileChange(e.target.files)}
+        />
+
+        <FileTrigger type="button" onClick={() => fileInputRef.current?.click()}>
+          {multiple ? "Selecionar imagens" : "Selecionar imagem"}
+        </FileTrigger>
+
+        {previewMode !== "replace" && internalPreviews.length > 0 && (
+          <PreviewImageDiv>
+            {internalPreviews.map((src, i) => (
+              <Image key={i} src={src} alt="Preview" width={88} height={88} />
+            ))}
+          </PreviewImageDiv>
+        )}
+      </>
+    ),
+
+    search: (
+      <>
+        <SearchIcon>
+          <AiOutlineSearch />
+        </SearchIcon>
+        <input
+          {...commonProps}
+          onClick={onClick}
+          type="search"
+          value={value ?? ""}
+          placeholder={placeholder ?? "Pesquisar..."}
+          onChange={(e) => onChange(e.target.value)}
+        />
+      </>
+    ),
+  };
 
   return (
-    <MaskedInputContainer $hasToggle={password}>
-      {InputElement}
-      {password && (
-        <PasswordToggle onClick={() => setShowPassword((prev) => !prev)}>
-          {showPassword ? <AiOutlineEyeInvisible /> : <AiOutlineEye />}
-        </PasswordToggle>
-      )}
-      {showError && hasError && (
-        <div className="error-message">{meta.error}</div>
-      )}
+    <MaskedInputContainer $variant={variant}>
+      {variants[variant]}
+      {showError && hasError && <ErrorDiv>{error}</ErrorDiv>}
     </MaskedInputContainer>
   );
 };
 
-        `
+      `
     );
+
+    await writeFile(
+      path.join(appPath, "src/components/ui/MaskedInput/FormikMaskedInput.tsx"),
+      `
+"use client";
+
+import { useField } from "formik";
+import { BaseMaskedInput } from "./BaseMaskedInput";
+
+type FormikMaskedInputProps = { name: string; } & Omit<React.ComponentProps<typeof BaseMaskedInput>,
+  "value" | "onChange" | "error" | "touched"
+>;
+
+export const FormikMaskedInput = ({
+  name,
+  ...props
+}: FormikMaskedInputProps) => {
+  const [field, meta, helpers] = useField(name);
+
+  return (
+    <BaseMaskedInput
+      {...props}
+      value={field.value}
+      onChange={helpers.setValue}
+      error={meta.error}
+      touched={meta.touched}
+    />
+  );
+};
+      `
+    );
+
     await writeFile(
       path.join(appPath, "src/components/ui/MaskedInput/MaskedInputStyles.ts"),
       `
 import { theme } from '@/styles/theme'
-import { styled } from 'styled-components'
+import styled from 'styled-components'
 
-export const MaskedInputContainer = styled.div<{ $hasToggle?: boolean }>\`
-  width: 100%;
+/* ============================================================
+ * CONTAINER
+ * ============================================================ */
+
+export const MaskedInputContainer = styled.div<{ $variant?: string; $hasToggle?: boolean }>\`
   position: relative;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 
   input,
   textarea,
-  select,
-  .imask-input {
-    padding: 8px;
+  select {
     width: 100%;
-    border-radius: 8px;
+    padding: 12px;
+    border-radius: 18px;
     border: 2px solid \${theme.colors.baseBlue.light20};
     font-size: 1rem;
+    line-height: 1.4;
     color: \${theme.colors.baseBlack.base};
     background-color: \${theme.colors.baseBlue.light50};
+    z-index: 2;
+
     transition:
       border-color 0.2s ease,
-      background-color 0.2s ease;
+      background-color 0.2s ease,
+      box-shadow 0.2s ease;
 
-    &:focus {
-      outline: none;
-      border: 2px solid \${theme.colors.baseBlue.dark};
+    \${({ $hasToggle }) => $hasToggle && \`padding-right: 44px;\`}
+
+    input.input-hidden {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      cursor: pointer;
     }
 
+    /* Hover */
+    &:hover {
+      border-color: \${theme.colors.baseBlue.base};
+    }
+
+    /* Focus */
+    &:focus {
+      outline: none;
+      border-color: \${theme.colors.baseBlue.dark};
+      box-shadow: 0 0 0 3px \${theme.colors.baseBlue.light20};
+      background-color: #fff;
+    }
+
+    /* Disabled */
+    &:disabled {
+      background-color: \${theme.colors.baseBlue.light20};
+      cursor: not-allowed;
+      opacity: 0.7;
+    }
+
+    /* Error */
     &.error {
-      border: 2px solid \${theme.colors.baseRed.base};
+      border-color: \${theme.colors.baseRed.base};
       background-color: \${theme.colors.baseRed.light02};
+      color: \${theme.colors.baseRed.light30};
+
+      &:focus {
+        box-shadow: 0 0 0 3px \${theme.colors.baseRed.light20};
+      }
+    }
+
+    &::placeholder {
+      color: \${theme.colors.baseBlack.light50};
     }
 
     &.error::placeholder {
       color: \${theme.colors.baseRed.light50};
     }
-
-    \${({ $hasToggle }) => $hasToggle && \`padding-right: 40px;\`}
   }
 
   input,
-  .imask-input {
-    height: 40px;
+  .imask-input,
+  select {
+    height: 44px;
   }
 
+  /* ===================== TEXTAREA ===================== */
+
   textarea {
-    min-height: 80px;
+    min-height: 96px;
     resize: none;
     scrollbar-width: thin;
     scrollbar-color: \${theme.colors.baseBlue.base} \${theme.colors.baseBlue.light20};
   }
 
+  /* ===================== SELECT ===================== */
+
   select {
-    height: 40px;
     appearance: none;
-    background-image: url("data:image/svg+xml;utf8,<svg fill='%23000' height='16' viewBox='0 0 24 24' width='16' xmlns='http://www.w3.org/2000/svg'><path d='M7 10l5 5 5-5z'/></svg>");
-    background-repeat: no-repeat;
-    background-position: right 12px center;
-    background-size: 16px;
-    padding-right: 32px;
+    padding-right: 40px;
     cursor: pointer;
+
+    background-image: url("data:image/svg+xml;utf8,<svg fill='%23444' height='16' viewBox='0 0 24 24' width='16' xmlns='http://www.w3.org/2000/svg'><path d='M7 10l5 5 5-5z'/></svg>");
+    background-repeat: no-repeat;
+    background-position: right 14px center;
+    background-size: 14px;
   }
 \`
+
+/* ============================================================
+ * SEARCH ICON
+ * ============================================================ */
+
+export const SearchIcon = styled.div\`
+  position: absolute;
+  left: 14px;
+  top: 12px;
+  font-size: 1.1rem;
+  color: \${theme.colors.baseBlack.light50};
+  pointer-events: none;
+\`
+
+/* ============================================================
+ * PASSWORD TOGGLE
+ * ============================================================ */
 
 export const PasswordToggle = styled.div\`
   position: absolute;
-  right: 10px;
+  right: 12px;
   top: 50%;
   transform: translateY(-50%);
-  background: transparent;
+  background: none;
   border: none;
   cursor: pointer;
-  font-size: 1.2rem;
-  color: \${theme.colors.baseBlack.base};
+  z-index: 2;
+  color: \${theme.colors.baseBlue.light};
 
-  &:hover {
-    color: \${theme.colors.baseBlue.dark};
+  svg {
+    font-size: 1.5rem;
   }
 \`
 
-    `
+/* ============================================================
+ * FILE PREVIEW
+ * ============================================================ */
+
+export const PreviewImageDiv = styled.div\`
+  margin-top: 10px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(88px, 1fr));
+  gap: 10px;
+
+  img {
+    border-radius: 10px;
+    object-fit: cover;
+    border: 2px solid \${theme.colors.baseBlue.light20};
+    background: #fff;
+  }
+\`
+
+/* ============================================================
+ * FILE BUTTON
+ * ============================================================ */
+
+export const FileTrigger = styled.button\`
+  width: 100%;
+  height: 40px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+
+  border-radius: 10px;
+  border: 2px solid \${theme.colors.baseBlue.light20};
+  background: \${theme.colors.baseBlue.light50};
+
+  color: \${theme.colors.baseBlue.dark};
+  font-size: 0.95rem;
+  font-weight: 500;
+
+  cursor: pointer;
+
+  transition:
+    border-color 0.2s ease,
+    background-color 0.2s ease,
+    color 0.2s ease;
+
+  &:hover {
+    border-color: \${theme.colors.baseBlue.base};
+    background: #fff;
+  }
+
+  &:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px \${theme.colors.baseBlue.light20};
+  }
+\`
+
+/* ============================================================
+ * ERROR
+ * ============================================================ */
+
+export const ErrorDiv = styled.div\`
+  color: \${theme.colors.baseRed.light30};
+  font-size: 0.85rem;
+  font-weight: 500;
+  background-color: \${theme.colors.baseRed.light04};
+  padding: 6px 12px;
+  border-radius: 10px;
+\`
+
+      `
     );
+
     await writeFile(
       path.join(appPath, "src/components/ui/ModalWrapper/ModalWrapper.tsx"),
       `
-import { AnimatePresence, motion } from "framer-motion";
-import { ReactNode } from "react";
+import { AnimatePresence } from "framer-motion"
+import { ReactNode } from "react"
+import { ModalContainer, ModalContent, Overlay } from "./ModalWrapperStyles"
 
 type ModalWrapperProps = {
-  isOpen: boolean;
-  children: ReactNode;
-  onClose: () => void;
-};
+  isOpen: boolean
+  children: ReactNode
+  onClose: () => void
+}
 
-export const ModalWrapper = ({ isOpen, children, onClose }: ModalWrapperProps) => {
+export const ModalWrapper = ({
+  isOpen,
+  children,
+  onClose,
+}: ModalWrapperProps) => {
   return (
     <AnimatePresence>
       {isOpen && (
-        <motion.div
-          key="modal"
-          initial={{ opacity: 0, y: -30 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -30 }}
-          transition={{ duration: 0.3, ease: "easeInOut" }}
-          style={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            width: "100vw",
-            height: "100vh",
-            zIndex: 100,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            backgroundColor: "rgba(0, 0, 0, 0.5)",
-            backdropFilter: "blur(5px)",
-          }}
+        <Overlay
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.25 }}
           onClick={onClose}
         >
-          <div onClick={(e) => e.stopPropagation()}>
-            {children}
-          </div>
-        </motion.div>
+          <ModalContainer>
+            <ModalContent onClick={(e) => e.stopPropagation()}>
+              {children}
+            </ModalContent>
+          </ModalContainer>
+        </Overlay>
       )}
     </AnimatePresence>
-  );
-};
+  )
+}
 
-    `
+      `
     );
+
+    await writeFile(
+      path.join(
+        appPath,
+        "src/components/ui/ModalWrapper/ModalWrapperStyles.ts"
+      ),
+      `
+import { media } from '@/styles/theme'
+import { motion } from 'framer-motion'
+import styled from 'styled-components'
+
+export const Overlay = styled(motion.div)\`
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+
+  background-color: rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(4px);
+
+  display: flex;
+  justify-content: center;
+
+  overflow-y: auto;
+  overscroll-behavior: contain;
+\`
+
+export const ModalContainer = styled.div\`
+  width: 100%;
+  min-height: 100%;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 24px;
+
+  \${media.tablet} {
+    padding: 0px 6px;
+  }
+\`
+
+export const ModalContent = styled.div\`
+  width: 100%;
+  max-width: 420px; /* 🔥 limite essencial */
+
+  margin: auto;
+
+  /* garante que nunca estoure no mobile */
+  box-sizing: border-box;
+\`
+      `
+    );
+
     await writeFile(
       path.join(appPath, "src/components/ui/TypeWriter/TypeWriter.tsx"),
       `
@@ -1970,7 +2091,196 @@ export default function Typewriter({
     </Wrapper>
   )
 }
-    `
+      `
+    );
+
+    await writeFile(
+      path.join(appPath, "src/components/ui/Box/Box.tsx"),
+      `
+import { BoxContainer } from "./BoxStyles";
+import { BoxProps } from "./BoxTypes";
+
+export default function Box({ direction = "row", as = "div", ...props }: BoxProps) {
+  return (
+    <BoxContainer
+      as={as}
+      $direction={direction}
+      $justify={props.justify}
+      $align={props.align}
+      $bgColor={props.bgColor}
+      $width={props.width}
+      $height={props.height}
+      $padding={props.padding}
+      $gap={props.gap}
+      $wrap={props.wrap}
+      $radius={props.radius}
+    >
+      {props.children}
+    </BoxContainer>
+  );
+}
+
+      `
+    );
+
+    await writeFile(
+      path.join(appPath, "src/components/ui/Box/BoxStyles.ts"),
+      `
+import { themeConfig } from '@/styles/theme'
+import styled, { css } from 'styled-components'
+import { BgColor, FlexAlign, Size } from './BoxTypes'
+
+type StyledProps = {
+  $direction: 'row' | 'column'
+  $justify?: FlexAlign
+  $align?: FlexAlign
+  $bgColor?: BgColor
+  $width?: Size
+  $height?: Size
+  $padding?: Size
+  $gap?: number
+  $wrap?: boolean
+  $radius?: number
+}
+
+const sizeMap: Record<Size, string> = {
+  xm: '10%',
+  sm: '30%',
+  md: '50%',
+  lg: '100%',
+  fit: 'fit-content'
+}
+
+const paddingMap: Record<Size, string> = {
+  xm: '5px',
+  sm: '10px',
+  md: '15px',
+  lg: '20px',
+  fit: '0'
+}
+
+const alignMap: Record<FlexAlign, string> = {
+  center: 'center',
+  'space-between': 'space-between',
+  'space-around': 'space-around',
+  start: 'flex-start',
+  end: 'flex-end'
+}
+
+export const BoxContainer = styled.div<StyledProps>\`
+  display: flex;
+  flex-direction: \${({ $direction }) => $direction};
+  flex-wrap: \${({ $wrap }) => ($wrap ? 'wrap' : 'nowrap')};
+
+  gap: \${({ $gap }) => ($gap ? \`\${$gap}px\` : '12px')};
+  padding: \${({ $padding }) => ($padding ? paddingMap[$padding] : '12px')};
+
+  width: \${({ $width }) => ($width ? sizeMap[$width] : '100%')};
+  height: \${({ $height }) => ($height ? sizeMap[$height] : 'auto')};
+
+  justify-content: \${({ $justify }) => ($justify ? alignMap[$justify] : 'flex-start')};
+  align-items: \${({ $align }) => ($align ? alignMap[$align] : 'stretch')};
+
+  border-radius: \${({ $radius }) => ($radius ? \`\${$radius}px\` : '16px')};
+
+  \${({ $bgColor }) =>
+    $bgColor === 'glass' &&
+    css\`
+      background: rgba(255, 255, 255, 0.08);
+      backdrop-filter: blur(7px) saturate(180%);
+      -webkit-backdrop-filter: blur(10px) saturate(180%);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      box-shadow: 0 4px 30px rgba(0, 0, 0, 0.2);
+    \`}
+
+  \${({ $bgColor }) =>
+    $bgColor &&
+    $bgColor !== 'glass' &&
+    css\`
+      background: \${$bgColor === 'primary'
+        ? themeConfig.light.colors.neon.blue1
+        : $bgColor === 'secondary'
+          ? themeConfig.light.colors.neon.blue2
+          : themeConfig.light.colors.neon.pink1};
+    \`}
+\`
+
+      `
+    );
+
+    await writeFile(
+      path.join(appPath, "src/components/ui/Box/BoxTypes.ts"),
+      `
+import { JSX, ReactNode } from 'react'
+
+export type FlexAlign = 'center' | 'space-between' | 'space-around' | 'start' | 'end'
+
+export type Size = 'xm' | 'sm' | 'md' | 'lg' | 'fit'
+
+export type BgColor = 'primary' | 'secondary' | 'tertiary' | 'glass'
+
+export interface BoxProps {
+  direction?: 'row' | 'column'
+  justify?: FlexAlign
+  align?: FlexAlign
+  bgColor?: BgColor
+
+  width?: Size
+  height?: Size
+  padding?: Size
+
+  gap?: number
+  wrap?: boolean
+  radius?: number
+
+  as?: keyof JSX.IntrinsicElements
+  children?: ReactNode
+}
+
+      `
+    );
+
+    await writeFile(
+      path.join(appPath, "src/components/ui/Toaster/Toaster.tsx"),
+      `
+import { Toaster } from "react-hot-toast";
+
+export default function ToasterApp() {
+  return (
+    <div>
+      <Toaster
+        position="top-center"
+        containerStyle={{
+          top: 85,
+        }}
+        toastOptions={{
+          duration: 4000,
+          style: {
+            background: '#ebc6d3ff',
+            color: '#3f3c6eff',
+            borderRadius: '8px',
+            padding: '12px 16px',
+            fontSize: '0.9rem',
+          },
+          iconTheme: {
+            primary: '#3f3c6eff',
+            secondary: '#fbddf3',
+          },
+          error: {
+            style: {
+              background: '#fcd5d5',
+              color: '#b91c1c',
+              borderRadius: '8px',
+              padding: '12px 16px',
+            },
+          },
+        }}
+      />
+    </div>
+  );
+}
+
+      `
     );
   }
 
@@ -1984,21 +2294,27 @@ export default function Typewriter({
     `
 'use client'
 
-import { store } from '@/redux/store'
+import Loading from '@/app/loading'
+import { persistor, store } from '@/redux/store'
+import { theme } from '@/styles/theme'
 import { ReactNode } from 'react'
 import { Provider } from 'react-redux'
+import { PersistGate } from 'redux-persist/integration/react'
 import { ThemeProvider } from 'styled-components'
-import { theme } from '@/styles/theme'
 
 export function Providers({ children }: { children: ReactNode }) {
   return (
     <Provider store={store}>
-      <ThemeProvider theme={theme}>
-        {children}
-      </ThemeProvider>
+      {/* Remova o persistGate se não for usar persistência */}
+      <PersistGate loading={<Loading />} persistor={persistor}>
+        <ThemeProvider theme={theme}>
+          {children}
+        </ThemeProvider>
+      </PersistGate>
     </Provider>
   )
 }
+
     `
   );
 
@@ -2024,7 +2340,7 @@ export function Providers({ children }: { children: ReactNode }) {
 
       export type RootState = ReturnType<typeof store.getState>
       export type AppDispatch = typeof store.dispatch
-    `
+      `
     );
   } else if (installTests) {
     // Store com slice de autenticação para testes
@@ -2099,21 +2415,217 @@ export default authSlice.reducer
         `
     );
   } else {
-    // Store simples, sem middleware de API
+    // Store Completa, com persistência de autenticação
     await writeFile(
       path.join(appPath, "src/redux/store.ts"),
       `
-      import { configureStore } from '@reduxjs/toolkit'
+import { combineReducers, configureStore } from '@reduxjs/toolkit'
+import { persistReducer, persistStore } from 'redux-persist'
+import storage from 'redux-persist/lib/storage'
 
-      export const store = configureStore({
-        reducer: {
-          // Adicione seus reducers aqui
-        },
+import { apiSlice } from './slices/apiSlice'
+import authReducer from './slices/authSlice'
+
+const rootReducer = combineReducers({
+  // Adicione outras reducers aqui
+  auth: authReducer,
+  [apiSlice.reducerPath]: apiSlice.reducer
+})
+
+const persistConfig = {
+  key: 'root',
+  storage,
+  whitelist: ['auth'] // só auth será persistido
+}
+
+const persistedReducer = persistReducer(persistConfig, rootReducer)
+
+export const store = configureStore({
+  reducer: persistedReducer,
+  middleware: getDefaultMiddleware =>
+    getDefaultMiddleware({
+      serializableCheck: false
+    }).concat(apiSlice.middleware)
+})
+
+export const persistor = persistStore(store)
+
+export type RootState = ReturnType<typeof store.getState>
+export type AppDispatch = typeof store.dispatch
+
+      `
+    );
+
+    await writeFile(
+      path.join(appPath, "src/redux/slices/authSlice.ts"),
+      `
+      import { createSlice, PayloadAction } from '@reduxjs/toolkit'
+
+interface AuthState {
+  token: string | null
+  refreshToken: string | null
+  user: User | null
+}
+
+const initialState: AuthState = {
+  token: null,
+  refreshToken: null,
+  user: null
+}
+
+const authSlice = createSlice({
+  name: 'auth',
+  initialState,
+  reducers: {
+    setCredentials: (state, action) => {
+      state.token = action.payload.token
+      if (action.payload.refreshToken) {
+        state.refreshToken = action.payload.refreshToken
+      }
+      if (action.payload.user) {
+        state.user = action.payload.user
+      }
+    },
+
+    setUser: (state, action: PayloadAction<User>) => {
+      state.user = action.payload
+    },
+
+    logout: state => {
+      state.token = null
+      state.refreshToken = null
+      state.user = null
+
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('refreshToken')
+      }
+    }
+  }
+})
+
+export const { setCredentials, setUser, logout } = authSlice.actions
+export default authSlice.reducer
+
+      `
+    );
+
+    // exemplo de apiSlice
+    await writeFile(
+      path.join(appPath, "src/redux/slices/apiSlice.ts"),
+      `
+import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react'
+import { logout, setCredentials } from '../slices/authSlice'
+import type { RootState } from '../store'
+
+/* ======================================================
+   BASE QUERY
+====================================================== */
+const baseQuery = fetchBaseQuery({
+  //exemplo de baseUrl de endpoint
+  baseUrl: 'https://url-base.com/',
+  credentials: 'include',
+  prepareHeaders: (headers, { getState }) => {
+    const token = (getState() as RootState).auth.token
+
+    if (token) {
+      headers.set('Authorization', \`Bearer \${token}\`)
+    }
+
+    return headers
+  }
+})
+
+/* ======================================================
+   BASE QUERY COM REFRESH
+====================================================== */
+const baseQueryWithReauth: typeof baseQuery = async (args, api, extra) => {
+  let result = await baseQuery(args, api, extra)
+
+  if (result.error?.status === 401) {
+    const refreshResult = await baseQuery(
+      {
+        //exemplo de endpoint de refresh
+        url: 'api/token/refresh/',
+        method: 'POST'
+      },
+      api,
+      extra
+    )
+
+    if (refreshResult.data) {
+      const { access } = refreshResult.data as RefreshResponse
+
+      api.dispatch(setCredentials({ token: access }))
+      result = await baseQuery(args, api, extra)
+    } else {
+      api.dispatch(logout())
+
+      //força o app a "resetar"
+      window.location.href = '/'
+    }
+  }
+
+  return result
+}
+
+/* ======================================================
+   API SLICE
+====================================================== */
+export const apiSlice = createApi({
+  reducerPath: 'api',
+  baseQuery: baseQueryWithReauth,
+
+  tagTypes: ['adicione aqui seus tagTypes'],
+
+  endpoints: builder => ({
+    //exemplo de endpoint
+    auth: builder.query({
+      query: () => ({
+        url: 'api/token/',
+        method: 'POST'
       })
+    })
+  })
+})
 
-      export type RootState = ReturnType<typeof store.getState>
-      export type AppDispatch = typeof store.dispatch
-    `
+/* ======================================================
+    EXPORT HOOKS
+====================================================== */
+export const {
+  //exemplo de endpoint
+  useAuthQuery
+} = apiSlice
+
+      `
+    );
+
+    await writeFile(
+      path.join(appPath, "src/redux/slices/searchSlice.ts"),
+      `
+import { createSlice } from '@reduxjs/toolkit'
+
+interface SearchState {
+  value: string
+}
+
+const initialState: SearchState = {
+  value: ''
+}
+
+const searchSlice = createSlice({
+  name: 'search',
+  initialState,
+  reducers: {
+    setSearch: (state, action) => {
+      state.value = action.payload
+    }
+  }
+})
+
+export const { setSearch } = searchSlice.actions
+export default searchSlice.reducer
+
+      `
     );
   }
 
@@ -2560,7 +3072,7 @@ JWT_SECRET=
       }
     }
     
-          `
+      `
     );
 
     // cria o arquivo src/app/api/auth/logout/route.ts
@@ -4927,53 +5439,6 @@ async function createStyledComponentsFiles(appPath) {
     background: \${({ theme }) => theme.colors.baseBlue.base};
     margin: 0 2px;
   \`
-  
-  type BoxProps = {
-    direction: 'row' | 'column'
-    justify?: 'center' | 'space-between' | 'space-around' | 'start' | 'end'
-    align?: 'center' | 'space-between' | 'space-around' | 'start' | 'end'
-    $bgColor?: 'primary' | 'secondary'
-    width?: 'xm' | 'sm' | 'md' | 'lg'
-    height?: 'xm' | 'sm' | 'md' | 'lg'
-  }
-  
-  export const Box = styled.div<BoxProps>\`
-    width: \${props => {
-      switch (props.width) {
-        case 'xm':
-          return '10%'
-        case 'sm':
-          return '30%'
-        case 'md':
-          return '50%'
-        case 'lg':
-          return '100%'
-        case undefined:
-          return '100%'
-      }
-    }};
-    height: \${props => {
-      switch (props.height) {
-        case 'xm':
-          return '10%'
-        case 'sm':
-          return '30%'
-        case 'md':
-          return '50%'
-        case 'lg':
-          return '100%'
-      }
-    }};
-    display: flex;
-    gap: 12px;
-    padding: 12px;
-    border-radius: 12px;
-  
-    flex-direction: \${props => props.direction};
-    justify-content: \${props => props.justify};
-    align-items: \${props => props.align};
-    background-color: \${props => (props.$bgColor === 'primary' ? theme.colors.secondaryColor : theme.colors.pinkColor)};
-  \`
         `
   );
 
@@ -4981,96 +5446,115 @@ async function createStyledComponentsFiles(appPath) {
   await writeFile(
     path.join(appPath, "src/styles/animations.tsx"),
     `
-  import { css, keyframes } from 'styled-components'
-  
-  // ==================================
-  // TRANSITIONS (DURAÇÃO E EFEITO)
-  // ==================================
-  
-  export const transitions = {
-    default: 'transform 0.35s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.35s ease-in-out',
-    fast: 'transform 0.2s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.2s ease-in-out',
-    slow: 'transform 0.5s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.5s ease-in-out',
-    visibility: 'visibility 0.35s ease-in-out' // Transição para visibility
-  }
-  
-  // ==================================
-  // ANIMAÇÕES DE ENTRADA/SAÍDA (CSS HELPERS)
-  // Baseadas em uma prop $isOpen
-  // ==================================
-  
-  /**
-   * Fade In / Fade Out.
-   * Controla a opacidade e a visibilidade.
-   */
-  export const fadeInOut = css<{ $isOpen?: boolean }>\`
+    import { css, keyframes } from 'styled-components'
+
+// ==================================
+// Forma de usar as animações
+// ==================================
+
+// export const ComentsWindowContent = styled.div<{ $isOpen: boolean }>\`
+//   \${algumaAnimacao}
+// \`
+
+
+// ==================================
+// TRANSITIONS (DURAÇÃO E EFEITO)
+// ==================================
+
+export const transitions = {
+  default: 'transform 0.35s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.35s ease-in-out',
+  fast: 'transform 0.2s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.2s ease-in-out',
+  slow: 'transform 0.5s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.5s ease-in-out',
+  visibility: 'visibility 0.35s ease-in-out' // Transição para visibility
+}
+
+// ==================================
+// ANIMAÇÕES DE ENTRADA/SAÍDA (CSS HELPERS)
+// Baseadas em uma prop $isOpen
+// ==================================
+
+/**
+ * Fade In / Fade Out.
+ * Controla a opacidade e a visibilidade.
+ */
+export const fadeInOut = css<{ $isOpen?: boolean }>\`
     opacity: \${({ $isOpen }) => ($isOpen ? '1' : '0')};
     visibility: \${({ $isOpen }) => ($isOpen ? 'visible' : 'hidden')};
     transition:
       opacity \${transitions.fast},
       \${transitions.visibility};
   \`
-  
-  /**
-   * Usa scaleX para expandir/recolher horizontalmente.
-   */
-  export const slideFromLeft = css<{ $isOpen?: boolean }>\`
+
+/**
+ * Usa scaleX para expandir/recolher horizontalmente.
+ */
+export const slideFromLeft = css<{ $isOpen?: boolean }>\`
     transform-origin: left;
     transform: \${({ $isOpen }) => ($isOpen ? 'scaleX(1)' : 'scaleX(0)')};
     opacity: \${({ $isOpen }) => ($isOpen ? '1' : '0')};
     transition: \${transitions.default};
   \`
-  
-  /**
-   * Desliza de cima para baixo.
-   * Usa scaleY para expandir/recolher verticalmente.
-   */
-  export const slideFromTop = css<{ $isOpen?: boolean }>\`
+
+/**
+ * Abre e fecha o drawer.
+ * Usa max-height para expandir/recolher verticalmente.
+ */
+export const drawer = css<{ $isOpen?: boolean; $maxHeight?: string }>\`
+  overflow: hidden;
+  max-height: \${({ $isOpen, $maxHeight }) => ($isOpen ? $maxHeight || '500px' : '0')};
+  transition: max-height 0.3s ease-in-out;
+\`
+
+/**
+ * Desliza de cima para baixo.
+ * Usa scaleY para expandir/recolher verticalmente.
+ */
+export const slideFromTop = css<{ $isOpen?: boolean }>\`
     transform-origin: top;
     transform: \${({ $isOpen }) => ($isOpen ? 'scaleY(1)' : 'scaleY(0)')};
     opacity: \${({ $isOpen }) => ($isOpen ? '1' : '0')};
     transition: \${transitions.fast};
   \`
-  
-  /**
-   * Usa scaleX com origem na direita.
-   */
-  export const slideFromRight = css<{ $isOpen?: boolean }>\`
+
+/**
+ * Usa scaleX com origem na direita.
+ */
+export const slideFromRight = css<{ $isOpen?: boolean }>\`
     transform-origin: right;
     transform: \${({ $isOpen }) => ($isOpen ? 'scaleX(1)' : 'scaleX(0)')};
     opacity: \${({ $isOpen }) => ($isOpen ? '1' : '0')};
     transition: \${transitions.default};
   \`
-  
-  /**
-   * Aumenta e diminui o tamanho do elemento a partir do centro.
-   */
-  export const zoomInOut = css<{ $isOpen?: boolean }>\`
+
+/**
+ * Aumenta e diminui o tamanho do elemento a partir do centro.
+ */
+export const zoomInOut = css<{ $isOpen?: boolean }>\`
     transform-origin: center;
     transform: \${({ $isOpen }) => ($isOpen ? 'scale(1)' : 'scale(0.5)')};
     opacity: \${({ $isOpen }) => ($isOpen ? '1' : '0')};
     transition: \${transitions.fast};
   \`
-  
-  /**
-   * Usa translateX para mover o elemento para cima e para baixo.
-   */
-  export const slideAndFadeFromBottom = css<{ $isOpen?: boolean }>\`
+
+/**
+ * Usa translateX para mover o elemento para cima e para baixo.
+ */
+export const slideAndFadeFromBottom = css<{ $isOpen?: boolean }>\`
     transform: \${({ $isOpen }) => ($isOpen ? 'translateY(0)' : 'translateY(20px)')};
     opacity: \${({ $isOpen }) => ($isOpen ? '1' : '0')};
     transition: \${transitions.default};
   \`
-  
-  // ==================================
-  // ANIMAÇÕES CONTÍNUAS (KEYFRAMES)
-  // Para serem usadas com a propriedade 'animation'
-  // ==================================
-  
-  /**
-   * Efeito de "pulo" suave para cima e para baixo.
-   * Ótimo para ícones de "scroll down".
-   */
-  export const bounce = keyframes\`
+
+// ==================================
+// ANIMAÇÕES CONTÍNUAS (KEYFRAMES)
+// Para serem usadas com a propriedade 'animation'
+// ==================================
+
+/**
+ * Efeito de "pulo" suave para cima e para baixo.
+ * Ótimo para ícones de "scroll down".
+ */
+export const bounce = keyframes\`
     0%, 100% {
       transform: translateY(0);
       animation-timing-function: cubic-bezier(0.8, 0, 1, 1);
@@ -5080,23 +5564,23 @@ async function createStyledComponentsFiles(appPath) {
       animation-timing-function: cubic-bezier(0, 0, 0.2, 1);
     }
   \`
-  
-  /**
-   * Efeito de rotação para chamar atenção.
-   * Ótimo para ícones de notificação.
-   */
-  export const jumpRotate = keyframes\`
+
+/**
+ * Efeito de rotação para chamar atenção.
+ * Ótimo para ícones de notificação.
+ */
+export const jumpRotate = keyframes\`
     0%   { transform: rotate(0deg); }
     30%  { transform: rotate(15deg); }
     50%  { transform: rotate(15deg); }
     80%  { transform: rotate(-15deg); }
     100% { transform: rotate(0deg); }
   \`
-  
-  /**
-   * Aumenta e diminui o tamanho para criar um foco sutil.
-   */
-  export const pulse = keyframes\`
+
+/**
+ * Aumenta e diminui o tamanho para criar um foco sutil.
+ */
+export const pulse = keyframes\`
     0% {
       transform: scale(1);
     }
@@ -5107,11 +5591,11 @@ async function createStyledComponentsFiles(appPath) {
       transform: scale(1);
     }
   \`
-  
-  /**
-   * Um gradiente que se move para indicar que o conteúdo está carregando.
-   */
-  export const skeletonLoading = keyframes\`
+
+/**
+ * Um gradiente que se move para indicar que o conteúdo está carregando.
+ */
+export const skeletonLoading = keyframes\`
     0% {
       background-position: -200px 0;
     }
@@ -5119,11 +5603,11 @@ async function createStyledComponentsFiles(appPath) {
       background-position: calc(200px + 100%) 0;
     }
   \`
-  
-  /**
-   * Perfeito para ícones de loading (spinners).
-   */
-  export const spin = keyframes\`
+
+/**
+ * Perfeito para ícones de loading (spinners).
+ */
+export const spin = keyframes\`
     from {
       transform: rotate(0deg);
     }
@@ -5131,8 +5615,7 @@ async function createStyledComponentsFiles(appPath) {
       transform: rotate(360deg);
     }
   \`
-  
-        `
+    `
   );
 
   // Styled Components Registry
@@ -5247,7 +5730,7 @@ const pixelify_sans = Pixelify_Sans({
 
 // Metadata
 export const metadata: Metadata = {
-  title: 'Baltazarte',
+  title: 'Nome do Projeto Aqui',
   description: 'Aplicação Next.js criada com RNT CLI',
 }
 
@@ -5261,44 +5744,13 @@ export default function RootLayout({
       <body>
         <StyledComponentsRegistry>
           <GlobalStyles />
+          <ToasterApp />
+
           <Providers>
-            <Header />
             {children}
             <Footer />
-            <Toaster
-              position="top-center"
-              containerStyle={{
-                top: 85,
-              }}
-              toastOptions={{
-                duration: 2000,
-                style: {
-                  background: '#ebc6d3ff',
-                  color: '#3f3c6eff',
-                  borderRadius: '8px',
-                  padding: '12px 16px',
-                  fontSize: '0.9rem',
-                },
-                iconTheme: {
-                  primary: '#3f3c6eff',
-                  secondary: '#fbddf3',
-                },
-                error: {
-                  style: {
-                    background: '#fcd5d5',
-                    color: '#b91c1c',
-                    borderRadius: '8px',
-                    padding: '12px 16px',
-                    fontSize: '0.9rem',
-                  },
-                  iconTheme: {
-                    primary: '#b91c1c',
-                    secondary: '#fcd5d5',
-                  },
-                },
-              }}
-            />
           </Providers>
+
         </StyledComponentsRegistry>
       </body>
     </html>
@@ -5465,7 +5917,7 @@ export default function PublicLayout({
     );
 
     await writeFile(
-      path.join(appPath, "src/app/(public)/loading.tsx"),
+      path.join(appPath, "src/app/loading.tsx"),
       `
 'use client'
 
@@ -5507,7 +5959,7 @@ export default function Loading() {
     );
 
     await writeFile(
-      path.join(appPath, "src/app/(public)/not-found.tsx"),
+      path.join(appPath, "src/app/not-found.tsx"),
       `
 'use client'
 
@@ -5573,7 +6025,7 @@ export default function NotFound() {
     );
   } else {
     await writeFile(
-      path.join(appPath, "src/app/(public)/layout.tsx"),
+      path.join(appPath, "src/app/layout.tsx"),
       `
 // 🌐 LAYOUT PÚBLICO - Layout para páginas públicas
 // ⚠️ ARQUIVO DELETÁVEL - Pode ser removido ao criar seu próprio layout
@@ -5593,7 +6045,7 @@ export default function PublicLayout({
     );
 
     await writeFile(
-      path.join(appPath, "src/app/(public)/loading.tsx"),
+      path.join(appPath, "src/app/loading.tsx"),
       `
 // ⏳ LOADING PÚBLICO - Componente de loading para páginas públicas
 // ⚠️ ARQUIVO DELETÁVEL - Pode ser removido ao criar seu próprio loading
@@ -5609,7 +6061,7 @@ export default function Loading() {
     );
 
     await writeFile(
-      path.join(appPath, "src/app/(public)/not-found.tsx"),
+      path.join(appPath, "src/app/not-found.tsx"),
       `
 // 🚫 NOT FOUND PÚBLICO - Página 404 para rotas públicas
 // ⚠️ ARQUIVO DELETÁVEL - Pode ser removido ao criar sua própria página 404

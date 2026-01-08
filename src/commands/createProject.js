@@ -5705,14 +5705,15 @@ async function createLayout(appPath, cssChoice, useEmpty) {
     await writeFile(
       path.join(appPath, "src/app/layout.tsx"),
       `
+
 import Footer from '@/components/layout/footer/Footer'
 import Header from '@/components/layout/header/Header'
 import { Providers } from '@/components/providers'
+import ToasterApp from '@/components/ui/Toaster/Toaster'
 import StyledComponentsRegistry from '@/lib/styled-components-registry'
 import { GlobalStyles } from '@/styles/globalStyles'
 import type { Metadata } from 'next'
 import { Jersey_10, Pixelify_Sans } from 'next/font/google'
-import { Toaster } from 'react-hot-toast'
 
 // Fonts
 const jersey_10 = Jersey_10({
@@ -5747,6 +5748,7 @@ export default function RootLayout({
           <ToasterApp />
 
           <Providers>
+            <Header />
             {children}
             <Footer />
           </Providers>
@@ -5756,7 +5758,6 @@ export default function RootLayout({
     </html>
   )
 }
-
 
       `
     );
